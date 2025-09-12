@@ -128,6 +128,15 @@ F_config:
 	rst MODULECALL_NOPAGE
 	ret
 
+;---------------------------------------------------------------------
+; F_wifi
+; Invokes the configuration program
+.globl F_wifi
+F_wifi:
+	ld hl, 0xD700		; module D7 (Wi-FI Module) call 0x00
+	rst MODULECALL_NOPAGE
+	ret
+
 ;-----------------------------------------------------------------------
 ; F_rom
 ; Invokes the ROM module utility. This is stored in page 0x01 of flash
@@ -284,6 +293,7 @@ F_exit:
 	ret
 
 MENU_nmi:
+	defw	STR_wifi,F_wifi
 	defw	STR_config,F_config
 	defw	STR_rom,F_rom
 	defw	STR_loader,F_loader
