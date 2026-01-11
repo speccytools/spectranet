@@ -1,0 +1,5 @@
+*.o
+*_np.asm
+*_p.asm
+*.lib
+.idea
