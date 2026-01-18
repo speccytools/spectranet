@@ -24,7 +24,9 @@
 ; English NMI menu strings
 .data
 .globl STR_wifi
-STR_wifi:	defb "Wi-Fi settings",0
+STR_wifi:	defb "Wi-Fi module",0
+.globl STR_spectranext_settings
+STR_spectranext_settings:	defb "Spectranext settings",0
 .globl STR_config
 STR_config:	defb "Configure network settings",0
 .globl STR_rom

@@ -130,10 +130,19 @@ F_config:
 
 ;---------------------------------------------------------------------
 ; F_wifi
-; Invokes the configuration program
+; Invokes the WiFi module
 .globl F_wifi
 F_wifi:
 	ld hl, 0xD700		; module D7 (Wi-FI Module) call 0x00
+	rst MODULECALL_NOPAGE
+	ret
+
+;---------------------------------------------------------------------
+; F_spectranext_settings
+; Invokes the SpectraNext settings menu
+.globl F_spectranext_settings
+F_spectranext_settings:
+	ld hl, 0xD701		; module D7 (Wi-FI Module) call 0x01
 	rst MODULECALL_NOPAGE
 	ret
 
@@ -293,8 +302,9 @@ F_exit:
 	ret
 
 MENU_nmi:
-	defw	STR_wifi,F_wifi
 	defw	STR_config,F_config
+	defw	STR_wifi,F_wifi
+	defw	STR_spectranext_settings,F_spectranext_settings
 	defw	STR_rom,F_rom
 	defw	STR_loader,F_loader
 	defw	STR_snapshot,F_snapshot
