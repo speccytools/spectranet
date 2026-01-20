@@ -7,7 +7,7 @@
 /* DOS-compatible filesystem functions forwarding to Spectranet VFS */
 
 /* File operations */
-int open(char *name, int flags, mode_t mode);
+int open(const char *name, int flags, mode_t mode);
 int close(int handle);
 ssize_t read(int handle, void *buf, size_t len);
 ssize_t write(int handle, void *buf, size_t len);
