@@ -86,8 +86,8 @@ OFS_INITFLAGS	equ 0x0012	; offset to flags
 INITFLAGS	equ 0x0F12	; init flags
 INIT_STATICIP	equ 1		; Static IP address configured
 INIT_DISBLTRAP	equ 2		; Disable RST 8 traps on startup
-INIT_ENABLESPECTRANEXT	equ 3		; Enable SpectraNext (double-click NMI to re-enable)
-INIT_ENABLEBOOTLOGO	equ 4		; Enable boot logo
+INIT_ENABLESPECTRANEXT	equ 4		; Enable SpectraNext (double-click NMI to re-enable)
+INIT_ENABLEBOOTLOGO	equ 8		; Enable boot logo
 
 ; Hostname - a null terminated string, maximum 15 characters (16 bytes).
 OFS_HOSTNAME	equ 0x0013	; offset to hostname string

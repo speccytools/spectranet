@@ -1,22 +1,9 @@
-; Spectranet VFS jump table definitions for libspdos
-; Based on spectranet.inc
+; Wrapper for spectranet.inc with include guard
+; This prevents duplicate definitions when spectranet.inc is included multiple times
 
-DEFC MOUNT = 0x3EA8
-DEFC UMOUNT = 0x3EAB
-DEFC OPENDIR = 0x3EAE
-DEFC OPEN = 0x3EB1
-DEFC UNLINK = 0x3EB4
-DEFC MKDIR = 0x3EB7
-DEFC RMDIR = 0x3EBA
-DEFC READ = 0x3EC9
-DEFC WRITE = 0x3ECC
-DEFC LSEEK = 0x3ECF
-DEFC VCLOSE = 0x3ED2
-DEFC READDIR = 0x3ED8
-DEFC CLOSEDIR = 0x3EDB
-DEFC CHDIR = 0x3EDE
-DEFC GETCWD = 0x3EE1
-DEFC RENAME = 0x3EE4
-DEFC HLCALL = 0x3FFA
-DEFC IXCALL = 0x3FFD
+IFNDEF SPECTRANET_INC_INCLUDED
+DEFINE SPECTRANET_INC_INCLUDED
 
+include "../../include/spectranet.inc"
+
+ENDIF ; SPECTRANET_INC_INCLUDED

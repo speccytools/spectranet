@@ -5,7 +5,8 @@ LIBNAME = libspdos
 COBJS = open.o close.o read.o write.o readbyte.o writebyte.o lseek.o \
 	mkdir.o rmdir.o chdir.o getcwd.o \
 	rename.o remove.o unlink.o \
-	opendir.o readdir.o closedir.o
+	opendir.o readdir.o closedir.o \
+	mount.o umount.o stat.o
 CFLAGS = +zx -vn -I./include -I/usr/local/z88dk/share/z88dk/include -O2
 
 # Pattern rule to compile .c to .o
