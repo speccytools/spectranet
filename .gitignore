@@ -3,3 +3,12 @@
 *_p.asm
 *.lib
 .idea
+*.bin
+*.map
+*.xinc
+*.module
+*.tzx
+*.tap
+*.a
+/utils/bin2tape
+/utils/configserv
