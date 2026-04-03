@@ -1,6 +1,6 @@
 MAP2SYM = ../buildtools/map2sym
 
-P0OBJS = zeropage.o reset.o trapdispatch.o w5100_ifconfig.o w5100_genintfunc.o w5100_buffer.o w5100_sockalloc.o w5100_sockctrl.o w5100_rxtx.o dns.o utility.o ui_input.o ui_output_stub.o progtrap.o basicextn.o pagealloc.o vfs.o w5100_sockinfo.o
+P0OBJS = zeropage.o reset.o trapdispatch.o w5100_ifconfig.o w5100_genintfunc.o w5100_buffer.o w5100_sockalloc.o w5100_sockctrl.o w5100_rxtx.o dns.o utility.o ui_input.o ui_output_stub.o progtrap.o basicextn.o pagealloc.o vfs.o w5100_sockinfo.o spectranext.o
 P0OUT = page0.bin
 P0LDFLAGS = -T page0.ld -Map $(P0OUT).map -L ../syslib
 P0LIBS = -lpager

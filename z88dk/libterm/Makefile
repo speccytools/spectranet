@@ -1,4 +1,4 @@
-# Makefile to build the libterm library (Z80 terminal stdout via port 0x073B)
+# Makefile to build the libterm library (Z80 terminal stdout via port decode 0x043B)
 PLIBNAME = libterm
 PASMFILES = libterm.lst
 

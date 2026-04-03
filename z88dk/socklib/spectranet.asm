@@ -53,6 +53,8 @@ DEFC TRAPRETURN_ROM = 0x3E90	; Returns from a trap that didn't page area B
 DEFC ADDBASICEXT_ROM = 0x3E93	; Adds a BASIC command
 DEFC STATEMENT_END_ROM = 0x3E96	; Check for statement end, exit at syntax time
 DEFC EXIT_SUCCESS_ROM = 0x3E99	; Use this to exit successfully after cmd
+DEFC SPECTRANEXT_ROM = 0x3EF0   ; Spectranext operations
+DEFC SPECTRANEXT = SPECTRANEXT_ROM
 
 DEFC POLLNVAL = 0x80
 

@@ -29,3 +29,4 @@ string_fetch_callee.asm
 expectstringexp.asm
 next_char.asm
 spectranet_detect.asm
+spectranext_api_p.asm

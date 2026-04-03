@@ -7,7 +7,7 @@ _spectranext_fputc_cons:
     add     hl, sp
     ld      a, (hl)        
 
-    ld      bc, $073B
+    ld      bc, $043B
     out     (c), a
 
     ret

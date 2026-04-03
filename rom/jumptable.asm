@@ -139,10 +139,10 @@ X_JUMPTABLE:
 	jp F_setmountpoint	; Set the current mount point in use
 	jp F_freemountpoint	; Free a mount point
 	jp F_resalloc		; Allocate/free directory and file handles
+	jp F_spectranext_op ; Specteanext operation
 .globl X_JUMPTABLE_SIZE
 X_JUMPTABLE_SIZE:	equ $-X_JUMPTABLE
-	defb 0xff,0xff,0xff,0xff	; 8 padding bytes
-	defb 0xff,0xff,0xff,0xff
+	defb 0xff,0xff,0xff,0xff,0xff ; 8 padding bytes
 
 .globl X_UPPER_ENTRYPT
 X_UPPER_ENTRYPT:
