@@ -1,5 +1,5 @@
-; Spectranext multiplex: command/status bytes at 0x3400/0x3401, staging RAM at 0x3402+
-; (permanent RAM section, always mapped — ram_memory[0x400..] on RP2350).
+; Spectranext multiplex: page B = CONTROLLER_PAGE, CMD/STATUS at WORKSPACE+0/+1, payload at +2+
+; (RP2350: spectranet memory_set_page maps that page to spectranext_controller).
 ;
 ; Register summary for F_spectranext_op (after IXCALL/HLCALL dispatch returns here):
 ;   IX    Preserved (dispatcher used IX to reach this ROM).
@@ -8,12 +8,13 @@
 ;
 .include "spectranet.inc"
 
-WORKSPACE	equ 0x3400
+CONTROLLER_PAGE	equ 0x48
+WORKSPACE	equ 0x2000
 
 CMD_REG		equ WORKSPACE + 0
 STATUS_REG	equ WORKSPACE + 1
 
-; --- Workspace payload (matches spectranext_workspace_t union at 0x3402 = ram_memory[0x402]) ---
+; --- Workspace payload (matches spectranext_workspace_t after CMD/STATUS in spectranext_controller) ---
 
 ; get_controller_status.out
 WS_controller_status	equ WORKSPACE + 2
@@ -96,18 +97,19 @@ F_spectranext_op:
 	jp		z, op_wifi_get_ap
 	cp		CMD_WIFI_CONNECT
 	jp		z, op_wifi_connect
+	cp		CMD_WIFI_DISCONNECT
+	jp		z, op_wifi_disconnect
 	cp		CMD_DNS
 	jp		z, op_dns
-
-	; for commands that do not match, execute directly
-	; - CMD_WIFI_DISCONNECT
-	call	issue_out_poll
-	ret		z
-	scf		; error
+	; Unknown opcode: fail without touching staging (caller should pass 0..5 only).
+	scf
 	ret
 
 ; CMD_GET_STATUS (0) — issue command, then read results from workspace.
 op_get_status:
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
 	ld		a, CMD_GET_STATUS
 	call	issue_out_poll
 	jp		nz, op_get_status_error
@@ -126,28 +128,45 @@ op_get_status:
 
 	pop		hl
 
+	call	POPPAGEB
 	xor		a
 	ret
 
 op_get_status_error:
+	ld		b, a
+	call	POPPAGEB
+	ld		a, b
 	scf
 	ret
 
 ; CMD_WIFI_SCAN (1) — A = count only.
 op_wifi_scan:
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
+	ld		a, CMD_WIFI_SCAN
 	call	issue_out_poll
 	jr		nz, op_wifi_scan_error
 
 	ld		a, (WS_scan_count)
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
 	or		a
 	ret
 
 op_wifi_scan_error:
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
 	scf
 	ret
 
 ; CMD_WIFI_GET_AP (2) — write index, issue command, read name.
 op_wifi_get_ap:
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
 	push	de
 	push	hl
 
@@ -165,17 +184,24 @@ op_wifi_get_ap:
 	pop		hl
 	pop		de
 
+	call	POPPAGEB
 	xor		a
 	ret
 
 op_wifi_get_ap_err:
 	pop		hl
 	pop		de
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
 	scf
 	ret
 
 ; CMD_WIFI_CONNECT (3) — copy SSID+password to workspace, then issue command.
 op_wifi_connect:
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
 	push	de
 	push	bc
 	push	hl
@@ -198,6 +224,7 @@ op_wifi_connect:
 	pop		bc
 	pop		de
 
+	call	POPPAGEB
 	xor		a
 	ret
 
@@ -205,16 +232,41 @@ op_wifi_connect_error:
 	pop		hl
 	pop		bc
 	pop		de
-
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
 	scf
 	ret
 
+; CMD_WIFI_DISCONNECT (4)
+op_wifi_disconnect:
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
+	ld		a, CMD_WIFI_DISCONNECT
+	call	issue_out_poll
+	jr		nz, op_wifi_disconnect_err
+
+	call	POPPAGEB
+	xor		a
+	ret
+
+op_wifi_disconnect_err:
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
+	scf
+	ret
 
 ; CMD_DNS (5) — hostname from HL to staging; on success, 4-byte IPv4 copied to caller buffer DE.
 .globl F_spectranext_dns
 F_spectranext_dns:
+
 op_dns:
-	push 	hl
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
+	push	hl
 	push	bc
 	push	de
 
@@ -226,7 +278,6 @@ op_dns:
 	call	issue_out_poll
 	jr		nz, op_dns_error
 
-	; retrieve caller's result buffer
 	pop		de
 	push	de
 
@@ -238,6 +289,7 @@ op_dns:
 	pop		bc
 	pop		hl
 
+	call	POPPAGEB
 	xor		a
 	ret
 
@@ -245,6 +297,9 @@ op_dns_error:
 	pop		de
 	pop		bc
 	pop		hl
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
 	scf
 	ret
 

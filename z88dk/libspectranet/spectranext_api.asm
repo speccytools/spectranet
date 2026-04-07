@@ -50,7 +50,7 @@ spectranext_get_controller_status_fail:
 	ld		hl, -1
 	ret
 
-; int8_t spectranext_wifi_scan_access_points(void); success: scan count (>=0). Error: -1.
+; int8_t spectranext_wifi_scan_access_points(void); success: H=0, L=count. Error: H=0, L=255 (-1), not ld hl,-1.
 spectranext_wifi_scan_access_points:
 	push	ix
 	ld		a, CMD_WIFI_SCAN
@@ -61,7 +61,8 @@ spectranext_wifi_scan_access_points:
 	ld		l, a
 	ret
 spectranext_wifi_scan_access_points_fail:
-	ld		hl, -1
+	ld		h, 0
+	ld		l, 255		; -1
 	ret
 
 ; int8_t spectranext_wifi_get_access_point(uint8_t ap, char *result_name); success: 0, error: -1.
