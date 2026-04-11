@@ -9,6 +9,7 @@ CMD_WIFI_GET_AP	equ 2
 CMD_WIFI_CONNECT	equ 3
 CMD_WIFI_DISCONNECT	equ 4
 CMD_DNS			equ 5
+CMD_ENGINECALL		equ 6
 
 PUBLIC spectranext_get_controller_status
 PUBLIC spectranext_wifi_scan_access_points
@@ -16,6 +17,7 @@ PUBLIC spectranext_wifi_get_access_point
 PUBLIC spectranext_wifi_connect_access_point
 PUBLIC spectranext_wifi_disconnect
 PUBLIC spectranext_gethostbyname
+PUBLIC spectranext_enginecall
 
 se_fail:
 	pop		ix
@@ -134,4 +136,31 @@ spectranext_gethostbyname:
 	ret
 spectranext_gethostbyname_fail:
 	ld		hl, -1
+	ret
+
+; int8_t spectranext_enginecall(const char *input, const char *output, const char *operation);
+; sccz80: top after ret = operation, then output, then input. ROM: HL=input, DE=output, BC=operation.
+spectranext_enginecall:
+	pop		af
+	pop		de		; operation (3rd / top)
+	push		de
+	pop		bc		; BC = operation
+	pop		de		; output (2nd)
+	pop		hl		; input (1st)
+	push		af
+
+	push		ix
+	ld		a, CMD_ENGINECALL
+	IXCALL		SPECTRANEXT
+	pop		ix
+	jr		c, spectranext_enginecall_fail
+	ld		hl, 0
+	ret
+spectranext_enginecall_fail:
+	ld		l, a
+	ld		h, 0
+	bit		7, a
+	jr		z, spectranext_enginecall_ret
+	dec		h
+spectranext_enginecall_ret:
 	ret

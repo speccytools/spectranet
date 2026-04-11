@@ -36,12 +36,18 @@ WS_wifi_password	equ WORKSPACE + 66
 WS_dns_host		equ WORKSPACE + 2
 WS_dns_ipv4_out	equ WORKSPACE + 2
 
+; enginecall.io (input 128, output 128, operation 256)
+WS_enginecall_input	equ WORKSPACE + 2
+WS_enginecall_output	equ WORKSPACE + 130
+WS_enginecall_op	equ WORKSPACE + 258
+
 CMD_GET_STATUS		equ 0
 CMD_WIFI_SCAN		equ 1
 CMD_WIFI_GET_AP	equ 2
 CMD_WIFI_CONNECT	equ 3
 CMD_WIFI_DISCONNECT	equ 4
 CMD_DNS			equ 5
+CMD_ENGINECALL		equ 6
 
 ; STATUS_REG: 0xFF = busy; when done A=0 success (carry clear), A!=0 failure (carry set)
 STATUS_IN_PROGRESS	equ 0xFF
@@ -50,7 +56,7 @@ STATUS_IN_PROGRESS	equ 0xFF
 
 ; -----------------------------------------------------------------------------
 ; F_spectranext_op — ROM 0x3EF0 (jumptable).
-; On entry: A = opcode (0..5). Other registers per command below (set before CALL).
+; On entry: A = opcode (0..6). Other registers per command below (set before CALL).
 ;
 ; issue_out_poll: sets STATUS=$FF, writes CMD, polls STATUS until byte != $FF.
 ; Final byte in A: $0 = success, non-zero = failure (Z set if success). Each op then maps
@@ -101,7 +107,9 @@ F_spectranext_op:
 	jp		z, op_wifi_disconnect
 	cp		CMD_DNS
 	jp		z, op_dns
-	; Unknown opcode: fail without touching staging (caller should pass 0..5 only).
+	cp		CMD_ENGINECALL
+	jp		z, op_enginecall
+	; Unknown opcode: fail without touching staging (caller should pass 0..6 only).
 	scf
 	ret
 
@@ -297,6 +305,43 @@ op_dns_error:
 	pop		de
 	pop		bc
 	pop		hl
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
+	scf
+	ret
+
+; CMD_ENGINECALL (6) — HL=input path, DE=output path, BC=operation string (each copied into staging).
+op_enginecall:
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
+	push	bc
+	push	de
+
+	ld		de, WS_enginecall_input
+	ld		bc, 128
+	ldir
+
+	pop	hl
+	ld		de, WS_enginecall_output
+	ld		bc, 128
+	ldir
+
+	pop	hl
+	ld		de, WS_enginecall_op
+	ld		bc, 256
+	ldir
+
+	ld		a, CMD_ENGINECALL
+	call	issue_out_poll
+	jr		nz, op_enginecall_error
+
+	call	POPPAGEB
+	xor		a
+	ret
+
+op_enginecall_error:
 	ld		ixl, a
 	call	POPPAGEB
 	ld		a, ixl
