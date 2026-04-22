@@ -33,51 +33,109 @@
 ; F_tbas_mount
 ; BASIC interpreter for "mount"
 ; Syntax: %mount mountpoint, "url"
+;         %mount "url"
 .globl F_tbas_mount
 F_tbas_mount:
 	; Syntax and runtime
 	rst CALLBAS
-	defw ZX_EXPT1_NUM
-	cp ','				; comma
+	defw ZX_GET_CHAR		; inspect first argument
+	cp '"'				    ; implicit form requires a quoted URL
+	jr z, .parse_implicit1
+
+.parse_explicit1:
+	rst CALLBAS
+	defw ZX_EXPT1_NUM		; explicit mount point
+	cp ','				; explicit mount point needs a comma
 	jp nz, PARSE_ERROR
 	rst CALLBAS
 	defw ZX_NEXT_CHAR
 
 	rst CALLBAS
 	defw ZX_EXPT_EXP		; string parameter - an URL
+	call STATEMENT_END
+	jr .runtime_explicit1
 
-	call STATEMENT_END		; followed by statement end
+.parse_implicit1:
+	rst CALLBAS
+	defw ZX_EXPT_EXP		; implicit quoted URL
+	call STATEMENT_END
+	jr .runtime_implicit1
 
-	; -------- Runtime only ---------
+.runtime_explicit1:
+	; -------- Runtime for %mount n, "url" ---------
+	rst CALLBAS
+	defw ZX_STK_FETCH		; path string
+	call .parse_url1
+	jr c, .badurl1
+
+	rst CALLBAS			; fetch the mount point
+	defw ZX_FIND_INT2
+	ld a, c				; mount point in BC
+	call MOUNT
+	jp c, J_tbas_error		; display the error message
+	jp EXIT_SUCCESS
+
+.runtime_implicit1:
+	; -------- Runtime for %mount "url" ---------
+	rst CALLBAS
+	defw ZX_STK_FETCH		; path string
+	call .parse_url1
+	jr c, .badurl1
+
+	call F_findfreemountpoint	; auto-mount avoids slot 0
+	jp c, J_tbas_error
+
+	push bc				; preserve chosen slot across mount
+	ld a, c				; mount point in C
+	call MOUNT
+	pop bc
+	jp c, J_tbas_error		; display the error message
+
+	ld a, c
+	call SETMOUNTPOINT
+	jp nc, EXIT_SUCCESS
+	ld a, EBADFS
+	jp J_tbas_error
+
+.parse_url1:
+	push bc				; preserve BASIC string length
+	push de				; preserve BASIC string pointer
 	ld hl, INTERPWKSPC		; clear space for the
 	ld de, INTERPWKSPC+1		; mount argument structure
 	ld bc, 9
 	ld (hl), 0
 	ldir
-
-	rst CALLBAS
-	defw ZX_STK_FETCH		; path string
+	pop de
+	pop bc
 	ld hl, INTERPWKSPC+10
 	call F_basstrcpy		; copy string from BASIC
 	ld ix, INTERPWKSPC		; where to place the mount struct
 	ld de, INTERPWKSPC+10		; location of the string to parse
 	ld hl, PARSEURL			; call PARSEURL in the tnfs ROM
 	rst MODULECALL_NOPAGE
-	jr c, .badurl1
-
-	rst CALLBAS			; fetch the mount point
-	defw ZX_FIND_INT2
-	
-.mount1:
-	ld a, c				; mount point in BC
-	call MOUNT
-	jp c, J_tbas_error		; display the error message
-
-	jp EXIT_SUCCESS
+	ret
 
 .badurl1:
 	ld a, EBADURL
 	jp J_tbas_error
+
+	; Find a free mount point for implicit mounts.
+	; Slot 0 is reserved so auto-assign scans 1..3 only.
+.globl F_findfreemountpoint
+F_findfreemountpoint:
+	ld hl, VFSVECBASE+1
+	ld b, 3
+	ld c, 1
+.findmount1:
+	ld a, (hl)
+	and a
+	ret z
+	inc hl
+	inc c
+	djnz .findmount1
+	ld a, TMPBUSY
+	scf
+	ret
 
 	; Copy a BASIC string to a C string.
 	; BASIC string in DE, C string (dest) in HL
@@ -614,4 +672,4 @@ STR_BOOTDOTZXLEN equ	STR_BOOTDOTZXEND-STR_BOOTDOTZX
 
 EBADURL:		equ	0x28
 EBADFS:		equ	0x29
-
+TMPBUSY:		equ	0x2A
