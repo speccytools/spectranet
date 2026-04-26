@@ -32,6 +32,7 @@ HLCALL		equ 0x3FFA
 IXCALL		equ 0x3FFD
 
 ; Port defines
+STDOUTREG	equ 0x043B
 CTRLREG		equ 0x033B
 CPLDINFO	equ 0x023B
 

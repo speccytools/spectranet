@@ -50,8 +50,18 @@ F_startmsg:
 	call PRINT42
 	ld a, NEWLINE
 	call PUTCHAR42
-	ret
+
+	ld hl, STR_boot_ok
+	ld bc, STDOUTREG    ; signal an OK to
+print_boot_str:         ; 0x043b port (STDOUT) to indicate
+    ld a, (hl)
+    or a
+    ret z
+	out (c), a          ; that the system has fully booted
+	inc hl
+	jr print_boot_str
 .data
+STR_boot_ok:    defb "BOOT OK!",NEWLINE,0
 STR_rel:		defb "Alioth Spectranet",NEWLINE,"Build: ",0
 STR_ip:		defb "   IP: ",0
 STR_date:	defb " Date: ",0
