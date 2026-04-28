@@ -14,27 +14,21 @@ spectranext_detect:
 	push bc
 	ld bc, CTRLREG
 	in a, (c)
-	ld d, a			; original CTRLREG
-
-	; Clear bit 7, write, read back — on Spectranext, written 0 appears as 1 when read
-	and 0x7F
+	; Clear all bits except for Bit 3 - Programmable trap enable.
+	and 0x08
 	out (c), a
 	in a, (c)
 	bit 7, a
 	jr z, spectranext_detect_fail
 
+    ; Clear all bits except for Bit 3 - Programmable trap enable.
+	and 0x08
 	; Set bit 7 (other bits from original), write, read back — written 1 appears as 0
-	ld a, d
-	and 0x7F
 	or 0x80
 	out (c), a
 	in a, (c)
 	bit 7, a
 	jr nz, spectranext_detect_fail
-
-	; Restore original register before reporting success
-	ld a, d
-	out (c), a
 
 	ld hl, 1
 	pop bc
