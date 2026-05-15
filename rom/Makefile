@@ -30,7 +30,6 @@ JPTABLELDFLAGS = -T jumptable.ld
 
 DATEFILE = date.xinc
 VERFILE = ver.xinc
-VERWORDFILE = verword.xinc
 P3SYMS = page3.xinc
 P2SYMS = page2.xinc
 P1SYMS = page1.xinc
@@ -68,11 +67,9 @@ date:	$(DATEFILE)
 $(DATEFILE):
 	echo "blddate: defb \"`date`\",0x0a,0" > $(DATEFILE)
 
-ver:	$(VERFILE) $(VERWORDFILE)
+ver:	$(VERFILE)
 $(VERFILE):
-	echo "bldstr: defb \"`whoami`@`hostname` R`cat VERSION`\",0x0a,0" > $(VERFILE)
-$(VERWORDFILE):
-	echo "bldver equ `cat VERSION`" > $(VERWORDFILE)
+	echo "bldstr: defb \"`cat VERSION`\",0x0a,0" > $(VERFILE)
 
 p0syms: page0 $(P0SYMS)
 $(P0SYMS):

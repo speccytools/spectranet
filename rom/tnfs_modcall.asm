@@ -19,7 +19,6 @@
 ;LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ;OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ;THE SOFTWARE.
-.include	"verword.xinc"
 .text
 .globl J_tnfs_modcall
 J_tnfs_modcall:
@@ -38,6 +37,6 @@ J_tnfs_modcall:
 
 .globl F_getversion
 F_getversion:			; return ROM version in BC
-	ld bc, bldver
+	ld bc, 1005
 	ret
 

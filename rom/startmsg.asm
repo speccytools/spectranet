@@ -33,12 +33,6 @@
 F_startmsg:
 	ld hl, STR_rel
 	call PRINT42
-	ld hl, bldstr
-	call PRINT42
-	ld hl, STR_date
-	call PRINT42
-	ld hl, blddate
-	call PRINT42
 	ld hl, STR_ip
 	call PRINT42
 	ld de, 0x3000		; workspace destination for IP address
@@ -48,8 +42,10 @@ F_startmsg:
 	call LONG2IPSTRING	; convert to a string
 	ld hl, 0x3004		; string pointer
 	call PRINT42
-	ld a, NEWLINE
-	call PUTCHAR42
+	ld hl, STR_build
+	call PRINT42
+	ld hl, bldstr
+	call PRINT42
 
 	ld hl, STR_boot_ok
 	ld bc, STDOUTREG    ; signal an OK to
@@ -62,9 +58,8 @@ print_boot_str:         ; 0x043b port (STDOUT) to indicate
 	jr print_boot_str
 .data
 STR_boot_ok:    defb "BOOT OK!",NEWLINE,0
-STR_rel:		defb "Alioth Spectranet",NEWLINE,"Build: ",0
-STR_ip:		defb "   IP: ",0
-STR_date:	defb " Date: ",0
-.include	"date.xinc"
+STR_rel:		defb "Alioth Spectranet (Spectranext)",NEWLINE,0
+STR_ip:		    defb "IP: ",0
+STR_build:		defb " Build: ",0
 .include 	"ver.xinc"
 	
