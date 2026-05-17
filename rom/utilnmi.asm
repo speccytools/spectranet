@@ -63,6 +63,18 @@ F_nmihandler:
 	call PRINT42
 	ld hl, MENU_nmi		; generate the menu
 	call F_genmenu
+
+    ; print status line
+    ld a, NEWLINE
+	call PUTCHAR42
+    ld hl, 0x3000
+    ld a, CMD_GET_MESSAGE
+    call SPECTRANEXT
+    jr c, .skip_message_print
+    ld hl, 0x3000
+    call PRINT42
+.skip_message_print:
+
 	ld hl, MENU_nmi
 	call F_getmenuopt	; act on user keypress
 	jr nz, .menuloop1	; routines set Z if they want to exit

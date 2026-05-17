@@ -1,4 +1,5 @@
-; Spectranext multiplex: page B = CONTROLLER_PAGE, CMD/STATUS at WORKSPACE+0/+1, payload at +2+
+; Spectranext multiplex / engine-call gateway: page B = CONTROLLER_PAGE,
+; CMD/STATUS at WORKSPACE+0/+1, payload at +2+
 ; (RP2350: spectranet memory_set_page maps that page to spectranext_controller).
 ;
 ; Register summary for F_spectranext_op (after IXCALL/HLCALL dispatch returns here):
@@ -41,13 +42,7 @@ WS_enginecall_input	equ WORKSPACE + 2
 WS_enginecall_output	equ WORKSPACE + 130
 WS_enginecall_op	equ WORKSPACE + 258
 
-CMD_GET_STATUS		equ 0
-CMD_WIFI_SCAN		equ 1
-CMD_WIFI_GET_AP	equ 2
-CMD_WIFI_CONNECT	equ 3
-CMD_WIFI_DISCONNECT	equ 4
-CMD_DNS			equ 5
-CMD_ENGINECALL		equ 6
+WS_get_message_ouput equ WORKSPACE + 2
 
 ; STATUS_REG: 0xFF = busy; when done A=0 success (carry clear), A!=0 failure (carry set)
 STATUS_IN_PROGRESS	equ 0xFF
@@ -56,7 +51,7 @@ STATUS_IN_PROGRESS	equ 0xFF
 
 ; -----------------------------------------------------------------------------
 ; F_spectranext_op — ROM 0x3EF0 (jumptable).
-; On entry: A = opcode (0..6). Other registers per command below (set before CALL).
+; On entry: A = opcode (0..7). Other registers per command below (set before CALL).
 ;
 ; issue_out_poll: sets STATUS=$FF, writes CMD, polls STATUS until byte != $FF.
 ; Final byte in A: $0 = success, non-zero = failure (Z set if success). Each op then maps
@@ -91,6 +86,16 @@ STATUS_IN_PROGRESS	equ 0xFF
 ;   in:  HL = hostname; DE = caller buffer for 4-byte IPv4 result.
 ;   out: carry=0 success; (DE..DE+3) filled from staging on success.
 ;   mod: HL, DE, BC from LDIRs; DE += 4 on success exit.
+;
+; CMD_ENGINECALL (6)
+;   in:  HL = input path, DE = output path, BC = operation string.
+;   out: carry=0 success; carry=1 failure with status byte in A (engine result/status).
+;   mod: HL, DE, BC destroyed by LDIR.
+;
+; CMD_GET_MESSAGE (7)
+;   in:  HL = caller buffer for message copy (128-byte staging copied out; NUL-terminated by controller).
+;   out: carry=0 success.
+;   mod: HL, DE, BC clobbered by LDIR; DE += 128 on success.
 ; -----------------------------------------------------------------------------
 
 .globl F_spectranext_op
@@ -109,7 +114,9 @@ F_spectranext_op:
 	jp		z, op_dns
 	cp		CMD_ENGINECALL
 	jp		z, op_enginecall
-	; Unknown opcode: fail without touching staging (caller should pass 0..6 only).
+	cp		CMD_GET_MESSAGE
+	jp		z, op_get_message
+	; Unknown opcode: fail without touching staging (caller should pass 0..7 only).
 	scf
 	ret
 
@@ -342,6 +349,38 @@ op_enginecall:
 	ret
 
 op_enginecall_error:
+	ld		ixl, a
+	call	POPPAGEB
+	ld		a, ixl
+	scf
+	ret
+
+; CMD_GET_MESSAGE (7) — copy controller-posted message to caller buffer from staging.
+op_get_message:
+	ld		a, CONTROLLER_PAGE
+	call	PUSHPAGEB
+
+	push	hl
+
+	ld		a, CMD_GET_MESSAGE
+	call	issue_out_poll
+	jr		nz, op_get_message_error
+
+	pop		de
+	push	de
+
+	ld		hl, WS_get_message_ouput
+	ld		bc, 128
+	ldir
+
+	pop		hl
+
+	call	POPPAGEB
+	xor		a
+	ret
+
+op_get_message_error:
+	pop		hl
 	ld		ixl, a
 	call	POPPAGEB
 	ld		a, ixl

@@ -22,6 +22,8 @@
 .include	"spectranet.inc"
 .include	"ctrlchars.inc"
 
+extern op_get_message
+
 ; Basstart.asm0 runs module functions that should be run once BASIC has
 ; shown the copyright message. The basstart function gets called from
 ; a trap.
@@ -46,7 +48,14 @@ F_startmsg:
 	call PRINT42
 	ld hl, bldstr
 	call PRINT42
+	ld hl, 0x3000
+	ld a, CMD_GET_MESSAGE
+	call SPECTRANEXT
+	jr c, skip_message_print
+	ld hl, 0x3000
+	call PRINT42
 
+skip_message_print:
 	ld hl, STR_boot_ok
 	ld bc, STDOUTREG    ; signal an OK to
 print_boot_str:         ; 0x043b port (STDOUT) to indicate
