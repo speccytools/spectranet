@@ -88,6 +88,10 @@ modcall:
 	cp l
 	jp z, F_rmcfgitem	; 0x0C
 
+	inc a
+	cp l
+	jp z, F_fsconfigmain ; 0x0D
+
 	ld a, l
 	cp 0xFF			; 0xFF
 	jp z, F_createnewconfig

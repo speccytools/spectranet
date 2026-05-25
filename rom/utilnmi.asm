@@ -26,6 +26,27 @@
 
 ; Utility ROM - NMI handler
 .text
+.globl F_nmihandler_modcall
+F_nmihandler_modcall:
+	push ix
+	push iy
+	push hl
+	push de
+	push bc
+	push af
+	ld a, (v_pga)
+	push af
+	call F_nmihandler
+	pop af
+	call SETPAGEA
+	pop af
+	pop bc
+	pop de
+	pop hl
+	pop iy
+	pop ix
+	ret
+
 .globl F_nmihandler
 F_nmihandler:
 	call F_savescreen	; save frame buffer contents
@@ -67,11 +88,11 @@ F_nmihandler:
     ; print status line
     ld a, NEWLINE
 	call PUTCHAR42
-    ld hl, 0x3000
+    ld hl, buf_workspace
     ld a, CMD_GET_MESSAGE
     call SPECTRANEXT
     jr c, .skip_message_print
-    ld hl, 0x3000
+    ld hl, buf_workspace
     call PRINT42
 .skip_message_print:
 
@@ -322,4 +343,3 @@ MENU_nmi:
 	defw	STR_snapshot,F_snapshot
 	defw	STR_exit,F_exit
 	defw	0,0
-

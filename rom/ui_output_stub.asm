@@ -38,7 +38,7 @@
 F_putc_5by8:
 	call F_pr_getroutine
 	call F_putc_5by8_impl
-	jp F_pr_restore
+	jr F_pr_restore
 
 ;--------------------------------------------------------------------------
 ; F_print: Prints a null terminated string.
@@ -62,7 +62,7 @@ F_print:
 F_clear:
 	call F_pr_getroutine
 	call F_clear_impl
-	jp F_pr_restore
+	jr F_pr_restore
 
 ;--------------------------------------------------------------------------
 ; F_backspace:  Perform a backspace (move current character position 1
@@ -71,7 +71,7 @@ F_clear:
 F_backspace:
 	call F_pr_getroutine
 	call F_backspace_impl
-	jp F_pr_restore
+	jr F_pr_restore
 
 ;--------------------------------------------------------------------------
 ; The following routines just fetch and restore the ROM page where the

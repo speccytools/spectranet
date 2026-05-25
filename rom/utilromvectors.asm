@@ -31,4 +31,4 @@
 	defw 0xFFFF
 	defw 0xFFFF
 	defw STR_ident
-
+	jp F_nmihandler_modcall		; MODCALL entry point

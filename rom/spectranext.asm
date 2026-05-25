@@ -43,6 +43,7 @@ WS_enginecall_output	equ WORKSPACE + 130
 WS_enginecall_op	equ WORKSPACE + 258
 
 WS_get_message_ouput equ WORKSPACE + 2
+WS_get_message_pending equ WORKSPACE + 130
 
 ; STATUS_REG: 0xFF = busy; when done A=0 success (carry clear), A!=0 failure (carry set)
 STATUS_IN_PROGRESS	equ 0xFF
@@ -65,7 +66,7 @@ STATUS_IN_PROGRESS	equ 0xFF
 ; CMD_WIFI_SCAN (1)
 ;   in:  (none besides A=opcode on entry to F_spectranext_op)
 ;   out: A = scan_count; carry=0 success.
-;   mod: A, F; DE, HL, BC, IX, IY preserved from routine entry.
+;   mod: A, F (stack holds A briefly); DE, HL, BC, IX, IY preserved from routine entry.
 ;
 ; CMD_WIFI_GET_AP (2)
 ;   in:  C = AP index; DE = caller buffer for AP name (up to 64 bytes, NUL-terminated from device).
@@ -94,18 +95,18 @@ STATUS_IN_PROGRESS	equ 0xFF
 ;
 ; CMD_GET_MESSAGE (7)
 ;   in:  HL = caller buffer for message copy (128-byte staging copied out; NUL-terminated by controller).
-;   out: carry=0 success.
-;   mod: HL, DE, BC clobbered by LDIR; DE += 128 on success.
+;   out: A = WS_get_message_pending (pending count/flag from controller); carry=0 success.
+;   mod: HL, DE, BC clobbered by LDIR; B briefly holds pending across POPPAGEB; DE += 128 on success.
 ; -----------------------------------------------------------------------------
 
 .globl F_spectranext_op
 F_spectranext_op:
 	cp		CMD_GET_STATUS
-	jp		z, op_get_status
+	jr		z, op_get_status
 	cp		CMD_WIFI_SCAN
-	jp		z, op_wifi_scan
+	jr		z, op_wifi_scan
 	cp		CMD_WIFI_GET_AP
-	jp		z, op_wifi_get_ap
+	jr		z, op_wifi_get_ap
 	cp		CMD_WIFI_CONNECT
 	jp		z, op_wifi_connect
 	cp		CMD_WIFI_DISCONNECT
@@ -127,7 +128,7 @@ op_get_status:
 
 	ld		a, CMD_GET_STATUS
 	call	issue_out_poll
-	jp		nz, op_get_status_error
+	jr		nz, op_get_status_error
 
 	push	hl
 
@@ -161,20 +162,13 @@ op_wifi_scan:
 
 	ld		a, CMD_WIFI_SCAN
 	call	issue_out_poll
-	jr		nz, op_wifi_scan_error
+	jp		nz, generic_error
 
 	ld		a, (WS_scan_count)
 	ld		ixl, a
 	call	POPPAGEB
 	ld		a, ixl
 	or		a
-	ret
-
-op_wifi_scan_error:
-	ld		ixl, a
-	call	POPPAGEB
-	ld		a, ixl
-	scf
 	ret
 
 ; CMD_WIFI_GET_AP (2) — write index, issue command, read name.
@@ -190,7 +184,7 @@ op_wifi_get_ap:
 
 	ld		a, CMD_WIFI_GET_AP
 	call	issue_out_poll
-	jp		nz, op_wifi_get_ap_err
+	jr		nz, op_wifi_get_ap_err
 
 	ld		bc, 64
 	ld		hl, WS_ap_name
@@ -206,11 +200,7 @@ op_wifi_get_ap:
 op_wifi_get_ap_err:
 	pop		hl
 	pop		de
-	ld		ixl, a
-	call	POPPAGEB
-	ld		a, ixl
-	scf
-	ret
+	jp      generic_error
 
 ; CMD_WIFI_CONNECT (3) — copy SSID+password to workspace, then issue command.
 op_wifi_connect:
@@ -247,11 +237,7 @@ op_wifi_connect_error:
 	pop		hl
 	pop		bc
 	pop		de
-	ld		ixl, a
-	call	POPPAGEB
-	ld		a, ixl
-	scf
-	ret
+	jp      generic_error
 
 ; CMD_WIFI_DISCONNECT (4)
 op_wifi_disconnect:
@@ -260,17 +246,10 @@ op_wifi_disconnect:
 
 	ld		a, CMD_WIFI_DISCONNECT
 	call	issue_out_poll
-	jr		nz, op_wifi_disconnect_err
+	jp		nz, generic_error
 
 	call	POPPAGEB
 	xor		a
-	ret
-
-op_wifi_disconnect_err:
-	ld		ixl, a
-	call	POPPAGEB
-	ld		a, ixl
-	scf
 	ret
 
 ; CMD_DNS (5) — hostname from HL to staging; on success, 4-byte IPv4 copied to caller buffer DE.
@@ -312,11 +291,7 @@ op_dns_error:
 	pop		de
 	pop		bc
 	pop		hl
-	ld		ixl, a
-	call	POPPAGEB
-	ld		a, ixl
-	scf
-	ret
+	jr      generic_error
 
 ; CMD_ENGINECALL (6) — HL=input path, DE=output path, BC=operation string (each copied into staging).
 op_enginecall:
@@ -342,17 +317,10 @@ op_enginecall:
 
 	ld		a, CMD_ENGINECALL
 	call	issue_out_poll
-	jr		nz, op_enginecall_error
+	jr		nz, generic_error
 
 	call	POPPAGEB
 	xor		a
-	ret
-
-op_enginecall_error:
-	ld		ixl, a
-	call	POPPAGEB
-	ld		a, ixl
-	scf
 	ret
 
 ; CMD_GET_MESSAGE (7) — copy controller-posted message to caller buffer from staging.
@@ -375,12 +343,16 @@ op_get_message:
 
 	pop		hl
 
+	ld		a, (WS_get_message_pending)
+	ld		ixl, a
 	call	POPPAGEB
-	xor		a
+	ld		a, ixl
+	or		a
 	ret
 
 op_get_message_error:
 	pop		hl
+generic_error:
 	ld		ixl, a
 	call	POPPAGEB
 	ld		a, ixl
