@@ -77,6 +77,17 @@ J_reset:
 
 	; Initialize some system variables that need it.
 
+	; ZX Spectrum Next: allow external hardware to observe ULA port
+	; writes, so the classic Spectranet detect OUT ($FE),A readback
+	; path still sees border colour changes.
+	ld bc, 0x243B
+	ld a, 0x8A
+	out (c), a
+	ld bc, 0x253B
+	in a, (c)
+	or 0x01
+	out (c), a
+
 	; This is a rather poor way of generating a random number seed,
 	; but it's the best we can do given Spectrum hardware. On power
 	; up or after each reset, the machine's memory will be in a slightly
