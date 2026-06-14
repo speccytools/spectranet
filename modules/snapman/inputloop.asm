@@ -23,6 +23,7 @@
 ;------------------------------------------------------------------------
 ; Handle user interaction for the snapshot manager.
 .include	"spectranet.inc"
+.include	"moduledefs.inc"
 .include	"snapman.inc"
 .include	"sysvars.inc"
 
@@ -36,6 +37,12 @@ F_startui:
 	xor a
 	ld (v_viewflags), a	; reset view flags
 	ld (v_inputflags), a	; and input flags
+	call F_selectfilesystem	; choose the filesystem to use for snapshots
+	jr nc, .fsselected0
+	call F_restoremountpoint
+	jp F_leave
+.fsselected0:
+	call CLEAR42
 	call F_makestaticui	; create the static user interface
 	call F_printcwd		; initialize the CWD line
 	call F_printcurfile	; show the current file
@@ -81,7 +88,142 @@ F_mainloop:
 	jr z, F_mainloop	; ...no, so continue
 	res 0, a
 	ld (v_inputflags), a	; reset the flag
+	call F_restoremountpoint
 	jp F_leave		; restore memory and leave
+
+;------------------------------------------------------------------------
+; F_selectfilesystem
+; Save the current filesystem, let the user pick a mount point, and select it.
+.globl F_selectfilesystem
+F_selectfilesystem:
+	ld a, (v_vfs_curmount)
+	ld (v_savedmount), a
+	ld (v_selectedmount), a
+
+.redrawfs0:
+	call CLEAR42
+	ld hl, STR_selectfs_title
+	call PRINT42
+
+	ld hl, STR_selectfs_prompt
+	call PRINT42
+
+	ld hl, STR_selectfs_exit
+	call PRINT42
+
+	ld a, 4
+	ld (v_rowcount), a
+
+	call F_printfs1
+	call F_printfs2
+	call F_printfs3
+	call F_printfs4
+
+.waitfskey0:
+	call GETKEY
+	cp '9'
+	jr z, .exitfs0
+	cp '1'
+	jr c, .waitfskey0
+	cp '5'
+	jr nc, .waitfskey0
+	push af
+	call KEYUP
+	pop af
+	sub '1'
+	ld (v_selectedmount), a
+	call SETMOUNTPOINT
+	jr c, .redrawfs0
+	or a
+	ret
+.exitfs0:
+	call KEYUP
+	scf
+	ret
+
+.globl F_restoremountpoint
+F_restoremountpoint:
+	ld a, (v_savedmount)
+	jp SETMOUNTPOINT
+
+F_printfs1:
+	ld hl, STR_fs1
+	call PRINT42
+	xor a
+	jp F_printfsstatus
+
+F_printfs2:
+	ld hl, STR_fs2
+	call PRINT42
+	ld a, 1
+	jp F_printfsstatus
+
+F_printfs3:
+	ld hl, STR_fs3
+	call PRINT42
+	ld a, 2
+	jp F_printfsstatus
+
+F_printfs4:
+	ld hl, STR_fs4
+	call PRINT42
+	ld a, 3
+
+F_printfsstatus:
+	push af
+	add a, VFSVECBASE % 256
+	ld l, a
+	ld h, 0x3F
+	ld a, (hl)
+	and a
+	jr z, .unmountedfs0
+	pop af
+	call F_printfsmountinfo
+	jr .markcurrentfs0
+.unmountedfs0:
+	ld hl, STR_unmounted
+	call PRINT42
+	pop af
+.markcurrentfs0:
+	ld c, a
+	ld a, (v_savedmount)
+	cp c
+	jr nz, .newlinefs0
+	ld hl, STR_currentmount
+	call PRINT42
+.newlinefs0:
+	ld hl, STR_newline
+	jp PRINT42
+
+F_printfsmountinfo:
+	push af
+	call F_copymountinfo
+	jr c, .unknownmountinfo0
+	ld hl, WORKSPACE
+	call PRINT42
+	pop af
+	ret
+.unknownmountinfo0:
+	ld hl, STR_unknown
+	call PRINT42
+	pop af
+	ret
+
+F_copymountinfo:
+	ld c, a
+	add a, VFSVECBASE % 256
+	ld l, a
+	ld h, 0x3F
+	ld a, (hl)
+	call PUSHPAGEA
+	ld a, (MOD_ROMID - 0x1000)
+	ld h, a
+	call POPPAGEA
+	ld a, c
+	ld l, 0xFF
+	ld de, WORKSPACE
+	rst MODULECALL_NOPAGE
+	ret
 
 ;------------------------------------------------------------------------
 ; F_exit

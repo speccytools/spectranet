@@ -20,6 +20,8 @@
 ;OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ;THE SOFTWARE.
 .text
+.include	"tnfs_sysvars.inc"
+
 .globl J_tnfs_modcall
 J_tnfs_modcall:
 	ld a, l
@@ -32,6 +34,9 @@ J_tnfs_modcall:
 	cp 0x02			; CALL 0x02?
 	jp z, F_getversion	; Get the version number
 
+	cp 0xFF			; CALL 0xFF?
+	jp z, F_tnfs_mountinfo	; Get mount identity string
+
 	scf			; MODCALL not recognised
 	ret
 
@@ -40,3 +45,16 @@ F_getversion:			; return ROM version in BC
 	ld bc, 1005
 	ret
 
+.globl F_tnfs_mountinfo
+F_tnfs_mountinfo:
+	ex de, hl
+	ld (hl), 'T'
+	inc hl
+	ld (hl), 'N'
+	inc hl
+	ld (hl), 'F'
+	inc hl
+	ld (hl), 'S'
+	inc hl
+	ld (hl), 0
+	ret

@@ -38,6 +38,18 @@
 .globl STR_nofile
 .globl STR_newname
 .globl STR_cferase
+.globl STR_selectfs_title
+.globl STR_selectfs_prompt
+.globl STR_selectfs_exit
+.globl STR_fs1
+.globl STR_fs2
+.globl STR_fs3
+.globl STR_fs4
+.globl STR_mounted
+.globl STR_unmounted
+.globl STR_unknown
+.globl STR_currentmount
+.globl STR_newline
 .globl CHAR_YES
 UI_STRINGS:     defb    0,5,"- SPECTRANET SNAPSHOT MANAGER -",0
                 defb    1,0,"Use arrow keys to move, Enter to select",0
@@ -73,4 +85,15 @@ STR_curfile:	defb	"Current: ",0
 STR_nofile:	defb	"(none)",0
 STR_newname:	defb	"New name> ",0
 STR_cferase:	defb	"Erase the selected file? (y/n): ",0
-
+STR_selectfs_title: defb "SELECT SNAPSHOT FILESYSTEM", NEWLINE, NEWLINE, 0
+STR_selectfs_prompt: defb "Select filesystem slot to load or", NEWLINE, "save snapshots from:", NEWLINE, NEWLINE, 0
+STR_selectfs_exit: defb "Press 9 to exit.", NEWLINE, 0
+STR_fs1:	defb	NEWLINE, "1 (slot 0): ",NEWLINE,0
+STR_fs2:	defb	NEWLINE, "2 (slot 1): ",NEWLINE,0
+STR_fs3:	defb	NEWLINE, "3 (slot 2): ",NEWLINE,0
+STR_fs4:	defb	NEWLINE, "4 (slot 3): ",NEWLINE,0
+STR_mounted:	defb	"MOUNTED",0
+STR_unmounted:	defb	"UNMOUNTED",0
+STR_unknown:	defb	"UNKNOWN",0
+STR_currentmount: defb NEWLINE, "  * CURRENT",0
+STR_newline:	defb	NEWLINE,0

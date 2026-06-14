@@ -66,6 +66,8 @@ v_numdirs		equ	0x1052	; Number of directories
 v_numsnas		equ	0x1053	; Number of snapshots
 v_dirptr		equ	0x1054	; Directory pointer
 v_snaptr		equ	0x1056	; Snapshot pointer
+v_savedmount		equ	0x1058	; Mount point active before snapman
+v_selectedmount		equ	0x1059	; Mount point selected for snapman
 
 v_dirwkspc		equ	0x3000	; Directory entry buffer
 v_statinfo		equ	0x3080	; Information returned by STAT
