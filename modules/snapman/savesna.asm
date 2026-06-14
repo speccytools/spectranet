@@ -61,7 +61,7 @@ F_snaptest:
 	ld a, (SNA_EIDI)		; Re.enable interrupts?
 	and a				; No
 	jr nz,  .retei1			; If yes, then EI on ret
-	ld sp, NMISTACK-14		; Set SP to where the stack was
+	ld sp, NMISTACK-18		; Set SP to where the stack was
 	pop af
 	ex af, af'
 	pop af
@@ -76,7 +76,7 @@ F_snaptest:
 	ret
 
 .retei1: 
-	ld sp, NMISTACK-14
+	ld sp, NMISTACK-18
 	pop af
 	ex af, af'
 	pop af
@@ -88,7 +88,7 @@ F_snaptest:
 
 ;------------------------------------------------------------------------
 ; HL = pointer to filename string
-; Entry to the NMI saves the folowing at NMISTACK-4:
+; Entry to the NMI saves the following below NMISTACK-8:
 ; hl, de, bc, af, af'
 .globl F_savesna
 F_savesna: 
@@ -116,8 +116,10 @@ F_savesna:
 	ld (SNA_AF), hl
 	ld hl, (NMISTACK)		; SP when NMI happened
 	ld (SNA_SP), hl
-	ld (SNA_IX), ix
-	ld (SNA_IY), iy
+	ld hl, (v_nmi_ix)
+	ld (SNA_IX), hl
+	ld hl, (v_nmi_iy)
+	ld (SNA_IY), hl
 	exx				; do the alternate set
 	ld (SNA_HLALT), hl
 	ld (SNA_DEALT), de
@@ -306,4 +308,3 @@ F_restorescreen:
         ldir
 	call POPPAGEA
         ret
-

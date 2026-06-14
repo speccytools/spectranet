@@ -41,6 +41,7 @@ WS_dns_ipv4_out	equ WORKSPACE + 2
 WS_enginecall_input	equ WORKSPACE + 2
 WS_enginecall_output	equ WORKSPACE + 130
 WS_enginecall_op	equ WORKSPACE + 258
+WS_enginecall_result	equ WORKSPACE + 514
 
 WS_get_message_ouput equ WORKSPACE + 2
 WS_get_message_pending equ WORKSPACE + 130
@@ -317,8 +318,11 @@ op_enginecall:
 
 	ld		a, CMD_ENGINECALL
 	call	issue_out_poll
-	jr		nz, generic_error
+	jr		z, .enginecall_ok
+	ld		a, (WS_enginecall_result)
+	jr		generic_error
 
+.enginecall_ok:
 	call	POPPAGEB
 	xor		a
 	ret

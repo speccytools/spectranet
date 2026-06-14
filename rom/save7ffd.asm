@@ -83,7 +83,7 @@ F_detectpages:
 ; Returns the value of port 1FFD bit 2 in the D register
 .globl F_romdetect
 F_romdetect:
-;        call PAGEOUT                    ; page out the Spectranet ROM
+        call PAGEOUT                    ; page out the Spectranet ROM
         ld a, (0x0008)                  ; examine 0x0008 in the ROM
         cp 0xFB                         ; ROM 0 for all models
         jr z, .editor2
@@ -106,7 +106,7 @@ F_romdetect:
         ld de, 0x0010                   ; only 0x7FFD set
 .exit2:
         ld bc, CTRLREG
-	in a, (c)			; get current value
+	    in a, (c)			; get current value
         or 1	                        ; page in Spectranet ROM
         out (c), a
         ret

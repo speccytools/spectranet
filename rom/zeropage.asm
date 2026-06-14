@@ -73,7 +73,7 @@ INTERRUPT:			; 0x0038
 
 .section nmi			; 0x0066
 	ld (NMISTACK), sp	; save SP
-	ld sp, NMISTACK-4	; set up new stack
+	ld sp, NMISTACK-8	; set up new stack
 
 	; stack everything that will be changed.
 	push hl
@@ -93,6 +93,14 @@ UNPAGE:
 	ret
 .text
 NMI2:
+	ld (v_nmi_ix), ix
+	ld (v_nmi_iy), iy
+	ld a, i			; preserve original interrupt state
+	ld a, 0
+	jp po, .nmiiffsaved0
+	inc a
+.nmiiffsaved0:
+	ld (v_nmi_iff2), a
 	ld bc, CTRLREG		; test for trap enable
 	in a, (c)
 	and MASK_PROGTRAP_EN
@@ -140,5 +148,9 @@ NMI3:
 	push hl			; munge the stack
 	ld hl, UNPAGE		; so that RETN goes via unpage
 	ex (sp), hl
+	ld a, (v_nmi_iff2)
+	and a
+	jr z, .norestoreei0
+	ei
+.norestoreei0:
 	retn
-

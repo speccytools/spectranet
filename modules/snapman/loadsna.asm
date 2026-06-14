@@ -187,6 +187,7 @@ F_readscreen:
 ; On success, snapshot is launched (effectively, we don't return)
 .globl F_loadsna128
 F_loadsna128: 
+	di			; don't want interrupts during bank switching
 	ld a, (v_snapfd)
 	ld de, HEADER		; where to put the header
 	ld bc, HEADERSZ		; length of the header

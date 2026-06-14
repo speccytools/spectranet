@@ -1,5 +1,8 @@
 fs_scratchpad: equ 0x00003500
 NMISTACK: equ 0x000038FE
+v_nmi_ix: equ NMISTACK-8
+v_nmi_iy: equ NMISTACK-6
+v_nmi_iff2: equ NMISTACK-4
 buf_moduleworkspace: equ 0x00003900
 TABLE_basext: equ 0x00003A00
 buf_message: equ 0x00003B00
