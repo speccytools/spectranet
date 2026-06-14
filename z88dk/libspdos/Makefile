@@ -15,14 +15,12 @@ NPASMFILES = libspdos_np.lst
 PROCESS_ASM = mount.asm setmountpoint.asm open.asm close.asm read.asm write.asm \
 	readbyte.asm writebyte.asm lseek.asm mkdir.asm rmdir.asm chdir.asm \
 	getcwd.asm rename.asm unlink.asm remove.asm opendir.asm readdir.asm \
-	closedir.asm umount.asm stat.asm
+	closedir.asm umount.asm stat.asm stat_isdir.asm
 
-CFLAGS = +zx -vn -I./include -I/usr/local/z88dk/share/z88dk/include -O2
-STAT_ISDIR_OBJ = stat_isdir.o
+GEN_PASM = $(patsubst %.asm,%_p.asm,$(PROCESS_ASM))
+GEN_NPASM = $(patsubst %.asm,%_np.asm,$(PROCESS_ASM))
 
-GEN_PNP = $(patsubst %.asm,%_p.asm,$(PROCESS_ASM))
-
-all:	$(PROCESS_ASM) spdos_gen $(GEN_PNP) $(STAT_ISDIR_OBJ) $(PLIBNAME).lib $(NPLIBNAME).lib
+all:	$(PROCESS_ASM) spdos_gen $(GEN_PASM) $(GEN_NPASM) $(PLIBNAME).lib $(NPLIBNAME).lib
 
 spdos_gen:	$(PROCESS_ASM)
 	$(SPDOSGEN)
@@ -32,14 +30,11 @@ spdos_gen_pl:	$(PROCESS_ASM)
 
 .PHONY:	spdos_gen spdos_gen_pl
 
-$(PLIBNAME).lib: $(PASMFILES) $(STAT_ISDIR_OBJ)
-	$(LIBLINKER) $(LIBLDFLAGS) -x$(PLIBNAME) @$(PASMFILES) $(STAT_ISDIR_OBJ)
+$(PLIBNAME).lib: $(PASMFILES) $(GEN_PASM) getmountpoint.asm
+	$(LIBLINKER) $(LIBLDFLAGS) -x$(PLIBNAME) @$(PASMFILES)
 
-$(NPLIBNAME).lib: $(NPASMFILES) $(STAT_ISDIR_OBJ)
-	$(LIBLINKER) $(LIBLDFLAGS) -x$(NPLIBNAME) @$(NPASMFILES) $(STAT_ISDIR_OBJ)
-
-$(STAT_ISDIR_OBJ): stat_isdir.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+$(NPLIBNAME).lib: $(NPASMFILES) $(GEN_NPASM) getmountpoint.asm
+	$(LIBLINKER) $(LIBLDFLAGS) -x$(NPLIBNAME) @$(NPASMFILES)
 
 install: $(PLIBNAME).lib $(NPLIBNAME).lib
 	$(CP) *.lib $(ZCCCFG)/../clibs

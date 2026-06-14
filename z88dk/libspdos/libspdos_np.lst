@@ -19,4 +19,5 @@ readdir_np.asm
 closedir_np.asm
 umount_np.asm
 stat_np.asm
+stat_isdir_np.asm
 getmountpoint.asm

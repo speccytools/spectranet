@@ -3,21 +3,19 @@
 PUBLIC stat
 	include "spectranet.asm"
 .stat
-	; sccz80 RTL: push buf, push path → stack under ret is path then buf.
-	pop	bc
-	pop	hl	; path
-	pop	de	; buf
-	push	de
-	push	hl
-	push	bc
-
 	push	ix
+	ld	ix, 4
+	add	ix, sp
+
+	ld	e, (ix+0)
+	ld	d, (ix+1)
+	ld	l, (ix+2)
+	ld	h, (ix+3)
+	pop	ix
+
 	; ROM STAT: HL=path, DE=stat buffer
 	IXCALL STAT
-
-	pop	ix
 	jr	c, stat_error
-	jr	z, stat_error
 	ld	hl, 0
 	ret
 
