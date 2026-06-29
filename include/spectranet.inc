@@ -130,6 +130,7 @@ CMD_WIFI_DISCONNECT	equ 4
 CMD_DNS			equ 5
 CMD_ENGINECALL		equ 6
 CMD_GET_MESSAGE		equ 7
+CMD_WIFI_INIT		equ 8
 
 
 ; Definitions

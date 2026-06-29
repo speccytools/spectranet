@@ -121,15 +121,15 @@ F_selectfilesystem:
 
 .waitfskey0:
 	call GETKEY
+	push af
+	call KEYUP
+	pop af
 	cp '9'
 	jr z, .exitfs0
 	cp '1'
 	jr c, .waitfskey0
 	cp '5'
 	jr nc, .waitfskey0
-	push af
-	call KEYUP
-	pop af
 	sub '1'
 	ld (v_selectedmount), a
 	call SETMOUNTPOINT

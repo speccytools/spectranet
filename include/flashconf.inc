@@ -88,6 +88,8 @@ INIT_STATICIP	equ 1		; Static IP address configured
 INIT_DISBLTRAP	equ 2		; Disable RST 8 traps on startup
 INIT_ENABLESPECTRANEXT	equ 4		; Enable SpectraNext (double-click NMI to re-enable)
 INIT_ENABLELAUNCHER	equ 8		; Enable SpectraNext launcher at boot
+INIT_OTA_LOW equ 16         ; OTA Firmware Update channel (low)
+INIT_OTA_HIGH equ 32         ; OTA Firmware Update channel (high)
 
 ; Hostname - a null terminated string, maximum 15 characters (16 bytes).
 OFS_HOSTNAME	equ 0x0013	; offset to hostname string

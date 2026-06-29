@@ -5,11 +5,12 @@
 
 CMD_GET_STATUS		equ 0
 CMD_WIFI_SCAN		equ 1
-CMD_WIFI_GET_AP	equ 2
+CMD_WIFI_GET_AP	    equ 2
 CMD_WIFI_CONNECT	equ 3
 CMD_WIFI_DISCONNECT	equ 4
-CMD_DNS			equ 5
+CMD_DNS			    equ 5
 CMD_ENGINECALL		equ 6
+CMD_GET_MESSAGE		equ 7
 
 PUBLIC spectranext_get_controller_status
 PUBLIC spectranext_wifi_scan_access_points

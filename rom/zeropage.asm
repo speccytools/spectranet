@@ -138,6 +138,8 @@ NMI3:
 	push de			; save it, so subsequent RET comes back
 	jp (hl)			; jump to the NMI vector
 .nmidone0:
+	ld ix, (v_nmi_ix)
+	ld iy, (v_nmi_iy)
 	pop af
 	ex af, af'
 	pop af
