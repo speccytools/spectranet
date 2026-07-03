@@ -41,6 +41,7 @@
 .include	"zxrom.inc"
 .include	"zxsysvars.inc"
 .include	"ctrlchars.inc"
+.include	"fcntl.inc"
 .include	"stdmodules.inc"
 .include	"automount.inc"
 .text
@@ -76,10 +77,10 @@ F_boot:
 	call F_tbas_loader	; Try to load the file
 	jr c, .err1		; leave here if the loader had an error
 
+	ld a, (INTERPWKSPC+OFFSET_PARAM1+1)
+	and 0xC0		; No LINE is encoded above 0x8000 in the TAP header.
+	jr nz, .leave1
 	ld hl, (ZX_NEWPPC)	; get the value of NEWPPC
-	ld a, h			; Is NEWPPC unset?
-	or l
-	jr z, .leave1
 
 	ld (ZX_OLDPPC), hl	; Put in OLDPPC so 'CONTINUE' jumps
 	ld a, 0xE8		; keyword 'CONTINUE'
@@ -132,4 +133,3 @@ F_shouldboot:
 .data	
 STR_bootmsg:	defb "Booting...",NEWLINE,0
 STR_loaderr:	defb "Error loading boot.zx",NEWLINE,0
-
