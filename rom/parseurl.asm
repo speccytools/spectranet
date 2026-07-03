@@ -105,6 +105,19 @@ J_notfound:
 .globl F_finduser
 F_finduser:
 	push hl
+.scanuser3:
+	ld a, (hl)
+	and a			; end of string
+	jr z, J_notfound
+	cp '/'			; path starts before any user separator
+	jr z, J_notfound
+	cp '@'			; only parse user/password if host separator exists
+	jr z, .hasuser3
+	inc hl
+	jr .scanuser3
+.hasuser3:
+	pop hl
+	push hl
 .loop3:
 	ld a, (hl)
 	and a			; end of string
