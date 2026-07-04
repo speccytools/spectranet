@@ -1,4 +1,6 @@
 MAP2SYM = ../buildtools/map2sym
+LANG ?= en
+localized_obj = $(if $(wildcard $(1)_$(LANG).asm),$(1)_$(LANG).o,$(1)_en.o)
 
 P0OBJS = zeropage.o reset.o trapdispatch.o w5100_ifconfig.o w5100_genintfunc.o w5100_buffer.o w5100_sockalloc.o w5100_sockctrl.o w5100_rxtx.o dns.o utility.o ui_input.o ui_output_stub.o progtrap.o basicextn.o pagealloc.o vfs.o w5100_sockinfo.o spectranext.o
 P0OUT = page0.bin
@@ -10,7 +12,7 @@ P1OUT = page1.bin
 P1LDFLAGS = -T page1.ld -Map $(P1OUT).map -L ../syslib
 P1LIBS = -lromui
 
-P2OBJS = utilromvectors.o utility_impl.o utilnmi.o save7ffd.o utilnmi_en.o
+P2OBJS = utilromvectors.o utility_impl.o utilnmi.o save7ffd.o $(call localized_obj,utilnmi)
 P2OUT = page2.bin
 P2LDFLAGS = -T ../modules/modules.ld -Map $(P2OUT).map -L ../syslib
 P2LIBS = -lromui
@@ -19,7 +21,7 @@ P3OBJS = tnfs_vectors.o tnfs_init.o tnfs_core.o tnfs_mount.o tnfs_file.o tnfs_di
 P3OUT = page3.bin
 P3LDFLAGS = -T ../modules/modules.ld -Map $(P3OUT).map
 
-MODMANOBJS = romconfigmain.o romconfstrings_en.o
+MODMANOBJS = romconfigmain.o $(call localized_obj,romconfstrings)
 MODMANOUT = modman.bin
 MODMANLDFLAGS = -T modman.ld -L ../syslib -Map $(MODMANOUT).map
 MODMANLIBS = -lromui -lflashwrite

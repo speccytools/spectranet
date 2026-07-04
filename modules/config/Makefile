@@ -1,4 +1,6 @@
-ASOBJS = configbasic.o configdata.o fs_config_ui.o fs_strings_en.o gen_copycfg.o if_config_ui.o if_configmain.o if_saveconfig.o if_strings_en.o init.o vectors.o
+LANG ?= en
+localized_obj = $(if $(wildcard $(1)_$(LANG).asm),$(1)_$(LANG).o,$(1)_en.o)
+ASOBJS = configbasic.o configdata.o fs_config_ui.o $(call localized_obj,fs_strings) gen_copycfg.o if_config_ui.o if_configmain.o if_saveconfig.o $(call localized_obj,if_strings) init.o vectors.o
 TESTOBJS = cfgtest.o configdata.o
 CREATEOBJS = create.o
 LIBS = -lromui
@@ -11,7 +13,7 @@ FLMAP = $(FLOUT).map
 DUMPOBJS = dumpconfig.o
 DUMPOUT = dumpconfig.bin
 DUMPLDFLAGS = -T standalone.ld
-SAOBJS = standalone_ifconfig.o gen_copycfg.o if_config_ui.o if_strings_en.o sa_if_saveconfig.o sa_flashwrite.o 
+SAOBJS = standalone_ifconfig.o gen_copycfg.o if_config_ui.o $(call localized_obj,if_strings) sa_if_saveconfig.o sa_flashwrite.o 
 SAOUT = ifconfig.bin
 SALDFLAGS = -T standalone.ld $(LIBPATH)
 SALIBS = -lflashwrite -lromui
@@ -30,4 +32,3 @@ dumpcfg:	$(DUMPOBJS)
 
 standalone:	$(SAOBJS)
 	$(LD) -o $(SAOUT) $(SAOBJS) $(SALDFLAGS) $(SALIBS)
-
