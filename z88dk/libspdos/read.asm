@@ -2,6 +2,7 @@
 ; ssize_t read(int handle, void *buf, size_t len);
 PUBLIC read
 	include "spectranet.asm"
+	include "../../include/errno.inc"
 .read
 	push	ix
 	ld	ix, 4
@@ -18,6 +19,8 @@ PUBLIC read
 	HLCALL READ
 
 	jr	nc, read_success
+	cp	EOF
+	jr	z, read_eof
 	ld	a, b
 	or	c
 	jr	z, read_error
@@ -25,6 +28,11 @@ read_success:
 	pop	ix
 	ld	h, b
 	ld	l, c
+	ret
+
+read_eof:
+	pop	ix
+	ld	hl, 0
 	ret
 
 read_error:
