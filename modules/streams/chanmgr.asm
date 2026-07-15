@@ -27,6 +27,7 @@
 .include	"ctrlchars.inc"
 .include	"streamvars.inc"
 .include	"sockdefs.inc"
+.include	"fcntl.inc"
 .text
 ; Channel manager - handles creation and deletion of channels
 
@@ -206,6 +207,54 @@ F_close_ix:
 .isdir4:
 	call CLOSEDIR
 	jr .closedone4
+
+;------------------------------------------------------------------------
+; F_seek_impl
+; Implementation of the seek routine.
+; Arguments on the stack: seek position, channel number
+.globl F_seek_impl
+F_seek_impl:
+	call F_fetchpage
+	pop hl				; Get channel number from stack.
+	ld a, l
+	call F_findmetadata_a
+
+	bit BIT_ISFILE, (ix+STRM_FLAGS)	; only file streams are seekable
+	jr z, .seekerr2
+	ld a, (ix+STRM_FD)
+	and a				; Valid FD?
+	jr z, .seekerr2
+
+	ld a, (ix+STRM_WRITEPTR)	; flush any pending output first
+	and a
+	call nz, .flush2
+	jr c, .seekerr2
+
+	ld (ix+STRM_READPTR), 0		; discard buffered input
+	ld (ix+STRM_REMAINING), 0
+
+	pop hl				; Get absolute seek position.
+	ld de, 0
+	ld c, SEEK_SET
+	ld a, (ix+STRM_FD)
+	call LSEEK
+	jr c, .seekerr_done2
+	call F_leave
+	call EXIT_SUCCESS
+
+.seekerr2:
+	pop hl				; discard seek position
+.seekerr_done2:
+	call F_leave
+	ld hl, STR_seekerr
+	jp REPORTERR
+
+.flush2:
+	dec a				; convert next byte pointer to end byte
+	ld d, (ix+STRM_WRITEBUF)
+	ld e, a
+	call F_flushbuffer
+	ret
 
 ;------------------------------------------------------------------------
 ; F_listen_impl
@@ -588,4 +637,3 @@ IORCHAN: equ ($+1)-IOROUTINE
 IOROUTINE_LEN 	equ $-IOROUTINE
 CHAN_LEN	equ IOROUTINE_LEN + IOROUTINE_LEN + 5
 IORROUTINE_LEN	equ $-IORROUTINE
-

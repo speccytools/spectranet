@@ -31,6 +31,7 @@
 .globl STR_nobuferr
 .globl STR_fileerr
 .globl STR_direrr
+.globl STR_seekerr
 STR_basicinit:	defb	"BASIC streams support initialized",NEWLINE,0
 STR_basinsterr:	defb	"BASIC streams initialization failed",NEWLINE,0
 STR_nomem:	defb	"Out of memory pages",0
@@ -39,4 +40,4 @@ STR_closeerr:	defb	"Could not close socket",0
 STR_nobuferr:	defb	"Out of buffers",0
 STR_fileerr:	defb	"Error opening file",0
 STR_direrr:	defb	"Error opening directory",0
-
+STR_seekerr:	defb	"Error seeking file",0

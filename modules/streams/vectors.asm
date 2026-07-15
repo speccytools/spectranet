@@ -36,4 +36,4 @@
 	jp J_modcall		; we have a module call routine
 .data
 STR_ident:
-	defb "Streams 1.01",0
+	defb "Streams 1.02",0

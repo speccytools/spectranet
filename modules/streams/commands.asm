@@ -227,6 +227,39 @@ F_close:
 	push bc			; save it on the stack
 	jp F_close_impl		; Jump to the meat of the routine
 
+;-------------------------------------------------------------------------
+; F_seek: Seeks to an absolute position in an open file stream.
+; Syntax is %seek #stream, position
+.globl F_seek
+F_seek:
+	rst CALLBAS
+	defw ZX_NEXT_CHAR
+	cp '#'			; expect channel number
+	jp nz, PARSE_ERROR
+	rst CALLBAS
+	defw ZX_NEXT_CHAR	; advance to channel number
+
+	rst CALLBAS
+	defw ZX_EXPT1_NUM	; stream number
+	cp ','
+	jp nz, PARSE_ERROR
+	rst CALLBAS
+	defw ZX_NEXT_CHAR
+
+	rst CALLBAS
+	defw ZX_EXPT1_NUM	; absolute seek position
+	call STATEMENT_END
+
+	; Runtime
+	rst CALLBAS
+	defw ZX_FIND_INT2	; Get the seek position
+	push bc
+
+	rst CALLBAS
+	defw ZX_FIND_INT2	; Get the stream number
+	push bc
+	jp F_seek_impl
+
 ;------------------------------------------------------------------------
 ; F_oneof: Sets the line number to go to on EOF.
 ; Syntax is %oneof linenumber
@@ -304,4 +337,3 @@ F_basstrcpy:
         ld (hl), a
         inc hl
         ret
-
