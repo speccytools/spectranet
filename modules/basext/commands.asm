@@ -583,6 +583,36 @@ F_tbas_rmdir:
 	jp J_tbas_error
 
 ;----------------------------------------------------------------------------
+; F_tbas_chmod: Change file mode / pass filesystem-specific control flags
+; Syntax: %chmod "filename", mode
+.globl F_tbas_chmod
+F_tbas_chmod:
+	rst CALLBAS
+	defw ZX_EXPT_EXP		; file to chmod
+	cp ','				; followed by a comma
+	jp nz, PARSE_ERROR
+	rst CALLBAS
+	defw ZX_NEXT_CHAR		; advance past ,
+
+	rst CALLBAS
+	defw ZX_EXPT1_NUM		; mode/control flags
+	call STATEMENT_END
+
+	; ------- runtime ------
+	rst CALLBAS
+	defw ZX_FIND_INT2		; mode in BC
+	push bc
+	rst CALLBAS
+	defw ZX_STK_FETCH		; filename
+	ld hl, INTERPWKSPC
+	call F_basstrcpy
+	ld hl, INTERPWKSPC
+	pop de				; mode for CHMOD
+	call CHMOD
+	jp nc, EXIT_SUCCESS
+	jp J_tbas_error
+
+;----------------------------------------------------------------------------
 ; F_tbas_copy: Copies a file
 .globl F_tbas_copy
 F_tbas_copy:

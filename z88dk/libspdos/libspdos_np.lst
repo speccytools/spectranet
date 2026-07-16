@@ -20,4 +20,6 @@ closedir_np.asm
 umount_np.asm
 stat_np.asm
 stat_isdir_np.asm
+chmod_np.asm
+fscommit_np.asm
 getmountpoint.asm

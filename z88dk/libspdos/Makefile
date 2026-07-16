@@ -15,7 +15,7 @@ NPASMFILES = libspdos_np.lst
 PROCESS_ASM = mount.asm setmountpoint.asm open.asm close.asm read.asm write.asm \
 	readbyte.asm writebyte.asm lseek.asm mkdir.asm rmdir.asm chdir.asm \
 	getcwd.asm rename.asm unlink.asm remove.asm opendir.asm readdir.asm \
-	closedir.asm umount.asm stat.asm stat_isdir.asm
+	closedir.asm umount.asm stat.asm stat_isdir.asm chmod.asm fscommit.asm
 
 GEN_PASM = $(patsubst %.asm,%_p.asm,$(PROCESS_ASM))
 GEN_NPASM = $(patsubst %.asm,%_np.asm,$(PROCESS_ASM))

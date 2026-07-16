@@ -20,4 +20,6 @@ closedir_p.asm
 umount_p.asm
 stat_p.asm
 stat_isdir_p.asm
+chmod_p.asm
+fscommit_p.asm
 getmountpoint.asm

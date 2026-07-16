@@ -59,7 +59,7 @@ F_init:
 STR_basicinit:   defb    "BASIC extensions installed",NEWLINE,0
 STR_basinsterr:  defb    "Failed to install BASIC extensions",NEWLINE,0
 
-NUMCMDS:         equ     19
+NUMCMDS:         equ     20
 PARSETABLE:      
 P_mount:         defb    0x0b
                 defw    CMD_MOUNT
@@ -137,6 +137,10 @@ P_asave:	defb	0x0b
 		defw	CMD_ASAVE
 		defb	0xFF
 		defw	F_tbas_asave
+P_chmod:	defb	0x0b
+		defw	CMD_CHMOD
+		defb	0xFF
+		defw	F_tbas_chmod
 
 CMD_MOUNT:       defb    "%mount",0
 CMD_UMOUNT:      defb    "%umount",0
@@ -157,5 +161,5 @@ CMD_MKDIR:	defb	"%mkdir",0
 CMD_RMDIR:	defb	"%rmdir",0
 CMD_COPY:	defb	"%cp",0
 CMD_ASAVE:	defb	"%asave",0
-
+CMD_CHMOD:	defb	"%chmod",0
 
