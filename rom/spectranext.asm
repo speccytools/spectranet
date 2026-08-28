@@ -46,6 +46,15 @@ WS_enginecall_result	equ WORKSPACE + 514
 WS_get_message_ouput equ WORKSPACE + 2
 WS_get_message_pending equ WORKSPACE + 130
 
+; xfs_read.in (path 128, source offset u32, target page u8, target offset
+; u16, maximum data u32) and xfs_read.out.bytes_read (u32).
+WS_xfs_read_filename		equ WORKSPACE + 2
+WS_xfs_read_source_offset	equ WORKSPACE + 130
+WS_xfs_read_target_page	equ WORKSPACE + 134
+WS_xfs_read_target_offset	equ WORKSPACE + 135
+WS_xfs_read_maximum_data	equ WORKSPACE + 137
+WS_xfs_read_bytes_read	equ WORKSPACE + 141
+
 ; STATUS_REG: 0xFF = busy; when done A=0 success (carry clear), A!=0 failure (carry set)
 STATUS_IN_PROGRESS	equ 0xFF
 
@@ -53,7 +62,7 @@ STATUS_IN_PROGRESS	equ 0xFF
 
 ; -----------------------------------------------------------------------------
 ; F_spectranext_op — ROM 0x3EF0 (jumptable).
-; On entry: A = opcode (0..7). Other registers per command below (set before CALL).
+; On entry: A = opcode (0..8). Other registers per command below (set before CALL).
 ;
 ; issue_out_poll: sets STATUS=$FF, writes CMD, polls STATUS until byte != $FF.
 ; Final byte in A: $0 = success, non-zero = failure (Z set if success). Each op then maps
@@ -98,6 +107,13 @@ STATUS_IN_PROGRESS	equ 0xFF
 ;   in:  HL = caller buffer for message copy (128-byte staging copied out; NUL-terminated by controller).
 ;   out: A = WS_get_message_pending (pending count/flag from controller); carry=0 success.
 ;   mod: HL, DE, BC clobbered by LDIR; B briefly holds pending across POPPAGEB; DE += 128 on success.
+;
+; CMD_XFS_READ (8)
+;   in:  HL = pointer to packed descriptor: source filename (128 bytes,
+;        including NUL), source offset (u32), target first RAM page (u8),
+;        target page offset (u16), maximum read size (u32).
+;   out: DEHL = bytes read; carry=0 success, carry=1 failure.
+;   mod: HL, DE, BC destroyed by LDIR.
 ; -----------------------------------------------------------------------------
 
 .globl F_spectranext_op
@@ -118,14 +134,24 @@ F_spectranext_op:
 	jp		z, op_enginecall
 	cp		CMD_GET_MESSAGE
 	jp		z, op_get_message
-	; Unknown opcode: fail without touching staging (caller should pass 0..7 only).
+	cp		CMD_XFS_READ
+	jp		z, op_xfs_read
+	; Unknown opcode: fail without touching staging.
 	scf
+	ret
+
+F_spectranext_page_in:
+	ld		a, CONTROLLER_PAGE
+	jp		PUSHPAGEB
+
+F_spectranext_success:
+	call	POPPAGEB
+	xor		a
 	ret
 
 ; CMD_GET_STATUS (0) — issue command, then read results from workspace.
 op_get_status:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
+	call	F_spectranext_page_in
 
 	ld		a, CMD_GET_STATUS
 	call	issue_out_poll
@@ -145,9 +171,7 @@ op_get_status:
 
 	pop		hl
 
-	call	POPPAGEB
-	xor		a
-	ret
+	jp		F_spectranext_success
 
 op_get_status_error:
 	ld		b, a
@@ -158,8 +182,7 @@ op_get_status_error:
 
 ; CMD_WIFI_SCAN (1) — A = count only.
 op_wifi_scan:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
+	call	F_spectranext_page_in
 
 	ld		a, CMD_WIFI_SCAN
 	call	issue_out_poll
@@ -174,11 +197,7 @@ op_wifi_scan:
 
 ; CMD_WIFI_GET_AP (2) — write index, issue command, read name.
 op_wifi_get_ap:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
-
-	push	de
-	push	hl
+	call	F_spectranext_page_in
 
 	ld		a, c
 	ld		(WS_ap_index), a
@@ -191,26 +210,14 @@ op_wifi_get_ap:
 	ld		hl, WS_ap_name
 	ldir
 
-	pop		hl
-	pop		de
-
-	call	POPPAGEB
-	xor		a
-	ret
+	jp		F_spectranext_success
 
 op_wifi_get_ap_err:
-	pop		hl
-	pop		de
-	jp      generic_error
+	jp		generic_error
 
 ; CMD_WIFI_CONNECT (3) — copy SSID+password to workspace, then issue command.
 op_wifi_connect:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
-
-	push	de
-	push	bc
-	push	hl
+	call	F_spectranext_page_in
 
 	push	de
 	ld		de, WS_wifi_ssid
@@ -226,43 +233,28 @@ op_wifi_connect:
 	call	issue_out_poll
 	jr		nz, op_wifi_connect_error
 
-	pop		hl
-	pop		bc
-	pop		de
-
-	call	POPPAGEB
-	xor		a
-	ret
+	jp		F_spectranext_success
 
 op_wifi_connect_error:
-	pop		hl
-	pop		bc
-	pop		de
-	jp      generic_error
+	jp		generic_error
 
 ; CMD_WIFI_DISCONNECT (4)
 op_wifi_disconnect:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
+	call	F_spectranext_page_in
 
 	ld		a, CMD_WIFI_DISCONNECT
 	call	issue_out_poll
 	jp		nz, generic_error
 
-	call	POPPAGEB
-	xor		a
-	ret
+	jp		F_spectranext_success
 
 ; CMD_DNS (5) — hostname from HL to staging; on success, 4-byte IPv4 copied to caller buffer DE.
 .globl F_spectranext_dns
 F_spectranext_dns:
 
 op_dns:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
+	call	F_spectranext_page_in
 
-	push	hl
-	push	bc
 	push	de
 
 	ld		de, WS_dns_host
@@ -274,30 +266,20 @@ op_dns:
 	jr		nz, op_dns_error
 
 	pop		de
-	push	de
 
 	ld		hl, WS_dns_ipv4_out
 	ld		bc, 4
 	ldir
 
-	pop		de
-	pop		bc
-	pop		hl
-
-	call	POPPAGEB
-	xor		a
-	ret
+	jp		F_spectranext_success
 
 op_dns_error:
 	pop		de
-	pop		bc
-	pop		hl
-	jr      generic_error
+	jp		generic_error
 
 ; CMD_ENGINECALL (6) — HL=input path, DE=output path, BC=operation string (each copied into staging).
 op_enginecall:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
+	call	F_spectranext_page_in
 
 	push	bc
 	push	de
@@ -320,47 +302,32 @@ op_enginecall:
 	call	issue_out_poll
 	jr		z, .enginecall_ok
 	ld		a, (WS_enginecall_result)
-	jr		generic_error
+	jp		generic_error
 
 .enginecall_ok:
-	call	POPPAGEB
-	xor		a
-	ret
+	jp		F_spectranext_success
 
 ; CMD_GET_MESSAGE (7) — copy controller-posted message to caller buffer from staging.
 op_get_message:
-	ld		a, CONTROLLER_PAGE
-	call	PUSHPAGEB
+	call	F_spectranext_page_in
 
 	push	hl
 
 	ld		a, CMD_GET_MESSAGE
 	call	issue_out_poll
-	jr		nz, op_get_message_error
+	jp		nz, op_get_message_error
 
 	pop		de
-	push	de
 
 	ld		hl, WS_get_message_ouput
 	ld		bc, 128
 	ldir
-
-	pop		hl
 
 	ld		a, (WS_get_message_pending)
 	ld		ixl, a
 	call	POPPAGEB
 	ld		a, ixl
 	or		a
-	ret
-
-op_get_message_error:
-	pop		hl
-generic_error:
-	ld		ixl, a
-	call	POPPAGEB
-	ld		a, ixl
-	scf
 	ret
 
 
@@ -378,3 +345,33 @@ pollrom:
 	jr		z, pollrom
 	or		a
 	ret
+
+; CMD_XFS_READ (8) — copy descriptor and source filename to staging.
+op_xfs_read:
+	call	F_spectranext_page_in
+
+	ld		de, WS_xfs_read_filename
+	ld		bc, 139
+	ldir
+
+	ld		a, CMD_XFS_READ
+	call	issue_out_poll
+	jp		nz, generic_error
+
+	ld		hl, (WS_xfs_read_bytes_read)
+	ld		de, (WS_xfs_read_bytes_read + 2)
+	jp		F_spectranext_success
+
+generic_error:
+	ex		af, af'
+	call	POPPAGEB
+	ex		af, af'
+	scf
+	ret
+
+; CALLBAS ends with an absolute jump, leaving this part of the restart-vector
+; reservation available for the shared GET_MESSAGE failure epilogue.
+.section rst10
+op_get_message_error:
+	pop		hl
+	jp		generic_error

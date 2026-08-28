@@ -32,8 +32,14 @@
         defw F_boot		; After BASIC init vector
         defw 0xFFFF
         defw STR_ident          ; Pointer to a string that identifies this mod
+J_basext_modcall:
+	ld a, l
+	cp BAS_EXT_TAPEIN_OPEN
+	jp z, F_basext_tapein_open
+	cp BAS_EXT_TAPEIN_CLOSE
+	jp z, F_basext_tapein_close
+	ld a, 20			; esxDOS ENOSYS
+	scf
 	ret
-	;jp F_snaptest		; Modulecall
 .data
 STR_ident:	defb	"VFS BASIC extensions",0
-

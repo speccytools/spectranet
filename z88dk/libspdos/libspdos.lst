@@ -22,4 +22,4 @@ stat_p.asm
 stat_isdir_p.asm
 chmod_p.asm
 fscommit_p.asm
-getmountpoint.asm
+getmountpoint_p.asm

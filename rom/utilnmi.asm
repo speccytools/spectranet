@@ -77,6 +77,19 @@ F_nmihandler:
 	ld bc, 0x7ffd
 	out (c), a
 .menuloop1:
+	; Fetch any controller message before drawing the menu. A leading '!'
+	; denotes an alert which replaces the NMI menu.
+	xor a
+	ld (buf_workspace), a
+	ld hl, buf_workspace
+	ld a, CMD_GET_MESSAGE
+	call SPECTRANEXT
+	jr c, .show_menu
+	ld a, (buf_workspace)
+	cp '!'
+	jr z, .show_alert
+
+.show_menu:
 	ld a, 7
 	out (254), a		; border = white
 	call CLEAR42
@@ -85,21 +98,32 @@ F_nmihandler:
 	ld hl, MENU_nmi		; generate the menu
 	call F_genmenu
 
-    ; print status line
+	; print status line
     ld a, NEWLINE
 	call PUTCHAR42
     ld hl, buf_workspace
-    ld a, CMD_GET_MESSAGE
-    call SPECTRANEXT
-    jr c, .skip_message_print
-    ld hl, buf_workspace
     call PRINT42
-.skip_message_print:
 
 	ld hl, MENU_nmi
 	call F_getmenuopt	; act on user keypress
 	jr nz, .menuloop1	; routines set Z if they want to exit
 
+	jr .exit_nmi
+
+.show_alert:
+	call CLEAR42
+	ld a, 2
+	out (254), a		; border = red
+	ld hl, 0x5800		; Spectrum attribute area
+	ld de, 0x5801
+	ld bc, 767
+	ld (hl), 23		; white ink on red paper
+	ldir
+	ld hl, buf_workspace
+	call PRINT42
+	call GETKEY		; leave the alert visible until acknowledged
+
+.exit_nmi:
 	call F_restorescreen
 	ld a, (v_port7ffd)	; Restore port 0x7FFD
 	ld bc, 0x7ffd

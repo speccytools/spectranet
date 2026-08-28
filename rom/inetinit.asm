@@ -45,10 +45,8 @@ F_inetinit:
 	ldir			; copy to RAM
 	ld hl, 0x2100+HW_ADDRESS
 	call INITHW		; set MAC addr and initial hw registers
-	ld hl, 0x2100+INITFLAGS	; Check to see if we should
-	bit INIT_STATICIP, (hl)	; be using static settings or DHCP	
-	jp z, F_dhcp		; no, not static configuration - use DHCP.
-
+	; SpectraNext obtains its network configuration outside this legacy
+	; ROM path.  Keep only the stored static configuration setup.
 	call F_showstatic	; Display details
 	ld hl, 0x2100+IP_ADDRESS
 	call IFCONFIG_INET
@@ -191,4 +189,3 @@ STR_staticgw:	defb "G:",0
 STR_wait:	defb "Link",0
 STR_linkup:	defb "OK",NEWLINE,0
 STR_fail:	defb "Not detected",NEWLINE,0
-

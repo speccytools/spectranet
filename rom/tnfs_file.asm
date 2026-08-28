@@ -419,4 +419,3 @@ F_tnfs_setmountpt_fd:
 	ld (v_curmountpt), a		; set the current mountpoint
 	pop hl
 	ret
-

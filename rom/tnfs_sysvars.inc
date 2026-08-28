@@ -56,6 +56,8 @@ v_tnfs_tx_bc		equ 0x1044	; BC for transmit
 v_tnfs_tx_hl		equ 0x1046	; HL for transmit
 v_tnfs_initpolltime	equ 0x1048	; poll time to use on first poll
 v_tnfs_lastpolladj	equ 0x1049	; how many packets since last adjust.
+v_tnfs_dirpos		equ 0x104A	; 32-bit VFS directory position scratch
+v_tnfs_dirposptr	equ 0x104E	; caller's 32-bit position pointer
 
 HANDLESPACE		equ 0x1100	; Handle information storage space
 HMETASPACE		equ 0x1200	; Handle metadata storage space

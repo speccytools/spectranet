@@ -78,13 +78,22 @@ F_tnfs_opendir:
 	
 ;=========================================================================
 ; F_tnfs_readdir
-; Reads the next directory entry.
+; Directory-stream operation.
 ; Arguments:	A = directory handle
-; 		DE = pointer to a buffer for the result
-; On success, returns with carry cleared, and the buffer at DE filled
-; with the result. On error, sets the carry flag and A to the error number
+; 		DE != 0: read the next entry into DE
+; 		DE == 0: directory-position operation
+; 		  HL = non-zero pointer to a 32-bit little-endian position
+; 		  C = 0: TELLDIR, overwrite the position at HL
+; 		  C = 1: SEEKDIR, use the position at HL
+; On a normal read, the buffer at DE is filled with the result. On error,
+; sets the carry flag and A to the error number.
 .globl F_tnfs_readdir
 F_tnfs_readdir:
+	push af
+	ld a, d
+	or e
+	jr z, .position
+	pop af
 	call F_fetchpage
 	ret c
 
@@ -112,6 +121,117 @@ F_tnfs_readdir:
 	ld b, 255			; max filename length
 	call F_restorepage		; ... in case it's 0x1000-0x1FFF
 	jp F_tnfs_strcpy		; copy then exit (page already restored)
+
+; DE == 0 is the VFS directory-position control form. Capture the supplied
+; position before paging our private RAM into page A: the pointer may itself
+; be in page A in the caller's current mapping.
+.position:
+	pop af				; recover the VFS directory handle
+	push af
+	ld a, h
+	or l
+	jp z, .bad_control_pop
+	ld a, c
+	or a
+	jr z, .tell_prepare
+	dec a
+	jp nz, .bad_control_pop
+
+; Save the complete 32-bit seek position on the stack before F_fetchpage.
+.seek_prepare:
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	inc hl
+	push de
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	push de
+	call F_fetchpage
+	jr nc, .seek_paged
+	pop de
+	pop de
+	pop de
+	ret
+.seek_paged:
+	pop hl
+	ld (v_tnfs_dirpos+2), hl
+	pop hl
+	ld (v_tnfs_dirpos), hl
+	pop af
+	ld l, a
+	ld h, HANDLESPACE / 256
+	ld b, (hl)			; TNFS server directory handle
+	inc h
+	ld a, (hl)
+	ld (v_curmountpt), a
+	ld a, TNFS_OP_SEEKDIR
+	call F_tnfs_header_w
+	ld (hl), b
+	inc hl
+	ld a, (v_tnfs_dirpos)
+	ld (hl), a
+	inc hl
+	ld a, (v_tnfs_dirpos+1)
+	ld (hl), a
+	inc hl
+	ld a, (v_tnfs_dirpos+2)
+	ld (hl), a
+	inc hl
+	ld a, (v_tnfs_dirpos+3)
+	ld (hl), a
+	inc hl
+	call F_tnfs_message_w_hl
+	jp c, F_leave
+	ld a, (tnfs_recv_buffer+tnfs_err_offset)
+	and a
+	jr nz, .position_error
+	jp F_leave
+
+.tell_prepare:
+	push hl				; preserve output pointer across F_fetchpage
+	call F_fetchpage
+	jr nc, .tell_paged
+	pop hl
+	pop hl
+	ret
+.tell_paged:
+	pop hl
+	ld (v_tnfs_dirposptr), hl
+	pop af
+	ld l, a
+	ld h, HANDLESPACE / 256
+	ld b, (hl)
+	inc h
+	ld a, (hl)
+	ld (v_curmountpt), a
+	ld a, TNFS_OP_TELLDIR
+	call F_tnfs_header_w
+	ld (hl), b
+	inc hl
+	call F_tnfs_message_w_hl
+	jp c, F_leave
+	ld a, (tnfs_recv_buffer+tnfs_err_offset)
+	and a
+	jr nz, .position_error
+	ld hl, tnfs_recv_buffer+tnfs_msg_offset
+	ld de, (v_tnfs_dirposptr)
+	call F_restorepage
+	ld bc, 4
+	ldir
+	or a
+	ret
+
+.bad_control_pop:
+	pop af
+	ld a, EINVAL
+	scf
+	ret
+
+.position_error:
+	scf
+	jp F_leave
 
 ;===========================================================================
 ; F_tnfs_closedir
@@ -225,4 +345,3 @@ F_tnfs_getcwd:
 	inc hl
 	inc de
 	jr .cploop7
-

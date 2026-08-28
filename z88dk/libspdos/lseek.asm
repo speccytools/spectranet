@@ -7,20 +7,18 @@ PUBLIC lseek
 	ld	ix, 4
 	add	ix, sp
 
-	ld	a, (ix+0)
+	ld	a, (ix+6)
 	ld	l, (ix+2)
 	ld	h, (ix+3)
 	ld	e, (ix+4)
 	ld	d, (ix+5)
-	ld	c, (ix+6)
+	ld	c, (ix+0)
 	pop	ix
 
 	; A=fd, C=whence, DEHL=position
 	IXCALL LSEEK
 
 	jr	c, lseek_error
-	ld	hl, 0
-	ld	de, 0
 	ret
 
 lseek_error:

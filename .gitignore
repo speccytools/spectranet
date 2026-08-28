@@ -1,6 +1,8 @@
 *.o
 *_np.asm
 *_p.asm
+!z88dk/libspdos/getmountpoint_np.asm
+!z88dk/libspdos/getmountpoint_p.asm
 *.lib
 .idea
 *.bin

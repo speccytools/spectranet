@@ -313,6 +313,7 @@ F_tnfs_message_w:
 .globl F_tnfs_message_w_hl
 F_tnfs_message_w_hl:		; entry point for when HL is already set
 	ld de, buf_tnfs_wkspc	; start of block
+	or a			; clear carry before subtracting pointers
 	sbc hl, de		; calculate length
 	ld b, h
 	ld c, l

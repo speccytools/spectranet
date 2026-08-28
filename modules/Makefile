@@ -1,4 +1,4 @@
-SUBDIRS = snapman messages config basext streams allram
+SUBDIRS = snapman messages config basext streams allram esxdos
 
 .PHONY: subdirs $(SUBDIRS)
 
@@ -13,4 +13,3 @@ clean:
 	for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
-

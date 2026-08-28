@@ -59,8 +59,16 @@ F_init:
 STR_basicinit:   defb    "BASIC extensions installed",NEWLINE,0
 STR_basinsterr:  defb    "Failed to install BASIC extensions",NEWLINE,0
 
-NUMCMDS:         equ     20
+NUMCMDS:         equ     22
 PARSETABLE:      
+P_index:         defb    0x0b
+                defw    CMD_INDEX
+                defb    0xFF
+                defw    F_tbas_index
+P_browser:       defb    0x0b
+                defw    CMD_BROWSER
+                defb    0xFF
+                defw    F_tbas_browser
 P_mount:         defb    0x0b
                 defw    CMD_MOUNT
                 defb    0xFF
@@ -142,6 +150,8 @@ P_chmod:	defb	0x0b
 		defb	0xFF
 		defw	F_tbas_chmod
 
+CMD_INDEX:       defb    "!",0
+CMD_BROWSER:     defb    "%browser",0
 CMD_MOUNT:       defb    "%mount",0
 CMD_UMOUNT:      defb    "%umount",0
 CMD_CHDIR:       defb    "%cd",0
@@ -162,4 +172,3 @@ CMD_RMDIR:	defb	"%rmdir",0
 CMD_COPY:	defb	"%cp",0
 CMD_ASAVE:	defb	"%asave",0
 CMD_CHMOD:	defb	"%chmod",0
-

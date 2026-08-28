@@ -130,7 +130,7 @@ CMD_WIFI_DISCONNECT	equ 4
 CMD_DNS			equ 5
 CMD_ENGINECALL		equ 6
 CMD_GET_MESSAGE		equ 7
-CMD_WIFI_INIT		equ 8
+CMD_XFS_READ		equ 8
 
 
 ; Definitions
@@ -143,4 +143,3 @@ FREEDIRHND	equ 2
 BIT_RECV	equ 2
 BIT_DISCON	equ 1
 BIT_CONN	equ 0
-

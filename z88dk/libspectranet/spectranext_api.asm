@@ -11,6 +11,7 @@ CMD_WIFI_DISCONNECT	equ 4
 CMD_DNS			    equ 5
 CMD_ENGINECALL		equ 6
 CMD_GET_MESSAGE		equ 7
+CMD_XFS_READ		equ 8
 
 PUBLIC spectranext_get_controller_status
 PUBLIC spectranext_wifi_scan_access_points
@@ -19,6 +20,7 @@ PUBLIC spectranext_wifi_connect_access_point
 PUBLIC spectranext_wifi_disconnect
 PUBLIC spectranext_gethostbyname
 PUBLIC spectranext_enginecall
+PUBLIC spectranext_xfs_read
 
 se_fail:
 	pop		ix
@@ -164,4 +166,19 @@ spectranext_enginecall_fail:
 	jr		z, spectranext_enginecall_ret
 	dec		h
 spectranext_enginecall_ret:
+	ret
+
+; int32_t spectranext_xfs_read(const spectranext_xfs_read_request_t *request);
+; __FASTCALL__: HL points to the packed 139-byte request. ROM returns the
+; actual byte count in DEHL, which is also z88dk's 32-bit return convention.
+spectranext_xfs_read:
+	push	ix
+	ld		a, CMD_XFS_READ
+	IXCALL	SPECTRANEXT
+	pop	ix
+	jr	c, spectranext_xfs_read_fail
+	ret
+spectranext_xfs_read_fail:
+	ld	de, -1
+	ld		hl, -1
 	ret

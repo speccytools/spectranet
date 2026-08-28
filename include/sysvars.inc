@@ -56,12 +56,27 @@ v_cur_resolver: equ 0x00003F4D
 v_queryresult: equ 0x00003F4F
 v_querylength: equ 0x00003F51
 v_dnsretries: equ 0x00003F53
-v_dhcpfd: equ 0x00003F54
-v_dhcpsockinfo: equ 0x00003F55
-v_dhcpxid: equ 0x00003F5D
-v_dhcpserver: equ 0x00003F61
-v_dhcpreqaddr: equ 0x00003F65
-v_dhcplease: equ 0x00003F69
+; Legacy ROM DHCP state formerly occupied $3F54-$3F6C. SpectraNext gets
+; network configuration outside this path. The eSXDOS shim uses the first
+; bytes as a 32-bit cursor buffer for the VFS READDIR control form.
+v_esxdos_dir_position: equ 0x00003F54
+v_esxdos_dir_handle: equ 0x00003F58
+v_esxdos_dir_mount: equ 0x00003F59
+v_esxdos_basic_iy: equ 0x00003F5A ; caller's BASIC system-variable base
+; Source of the raw BASIC DOT command line, excluding its leading '.'.
+; It remains in Spectrum RAM while the loader fills the DOT image pages.
+v_esxdos_dot_line: equ 0x00003F5C
+; DOT RST $08 input context. The remaining DHCP tail is permanent RAM and
+; remains visible while the kernel maps the dot image into section 3.
+v_dot_esx_a: equ 0x00003F5E
+v_dot_esx_op: equ 0x00003F5F
+v_dot_esx_bc: equ 0x00003F60
+v_dot_esx_de: equ 0x00003F62
+v_dot_esx_hl: equ 0x00003F64
+v_dot_esx_ix: equ 0x00003F66
+v_dot_esx_call_ix: equ 0x00003F68
+v_dot_esx_outptr: equ 0x00003F6A
+v_dot_esx_outlen: equ 0x00003F6C
 v_nspointer: equ 0x00003F6D
 v_vfs_curmount: equ 0x00003F6F
 v_vfs_dirhandle: equ 0x00003F70
@@ -76,6 +91,11 @@ v_hlsave: equ 0x00003F80
 v_desave: equ 0x00003F82
 v_bcsave: equ 0x00003F84
 v_ixsave: equ 0x00003F86
+; Secondary save aliases share storage with v_bcsave/v_ixsave to save space.
+; Use these only when v_hlsave/v_desave are busy and the overlapping save
+; locations are not needed for their primary purpose.
+v_hl2save: equ 0x00003F84
+v_de2save: equ 0x00003F86
 v_pagerws: equ 0x00003F88
 v_localport: equ 0x00003F8A
 v_sockfd: equ 0x00003F8C
@@ -116,6 +136,8 @@ v_dhnd9page: equ 0x00003FAC
 v_mountnumber: equ 0x00003FAD
 v_vfspgb_vecsave: equ 0x00003FAE
 v_vfs_workspace: equ 0x00003FAF
+; Used while a shimmed path operation temporarily selects a mountpoint.
+v_esxdos_savedmount: equ 0x00003FB0
 VFSJUMP: equ 0x00003FB1
 vectors: equ 0x00003FB4
 pagealloc: equ 0x00003FD4

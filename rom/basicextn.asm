@@ -37,6 +37,7 @@
 .include	"zxrom.inc"
 .include	"zxsysvars.inc"
 .include	"spectranet.inc"
+.include	"stdmodules.inc"
 
 ;---------------------------------------------------------------------------
 ; F_addbasext: Adds a new BASIC command or extension.
@@ -80,14 +81,39 @@ J_rst8handler:
 	ld a, (v_tabletop)	; Check there's something to do
 	and a			; if the LSB of tabletop is 0, nothing to do
 	jp z, J_rst8done
+	ld hl, (v_hlsave)	; CALLBAS will reuse v_hlsave/v_desave
+	ld (v_hl2save), hl	; keep the original RST 8 caller HL
+	ld hl, (v_desave)
+	ld (v_de2save), hl	; keep the original RST 8 caller DE
 	ex de, hl		; address of code is in DE
+	push bc			; ZX_GET_ERR may clobber esxDOS inputs
+	push ix			; esxDOS uses IX for path/buffer arguments
 	rst CALLBAS
 	defw ZX_GET_ERR		; get the error code (which may be in ZX ROM)
+	pop ix
+	pop bc
 	cp 0x0B			; Nonsense in BASIC?
 	jr z, .handled1
-;	cp 0x07			; End of file?
-;	jp z, J_handleeof
-	jp J_rst8done
+	or a			; esxDOS API calls are in the high code range
+	jp p, J_rst8done
+;---------------------------------------------------------------------------
+; J_esxdos_rst8
+; Hands a high RST 8 code to the esxDOS compatibility module. The BASIC
+; handler has already used CALLBAS to fetch the byte, so restore the original
+; caller registers from the copies taken at J_rst8handler entry.
+.globl J_esxdos_rst8
+J_esxdos_rst8:
+	ex af, af'		; save esxDOS operation ID
+	pop af			; restore original caller A
+	ld (v_asave), a		; modulecall needs HL for module/op selection
+	pop hl			; return address points at the operation byte
+	inc hl			; return after the operation byte
+	push hl
+	ex af, af'		; restore esxDOS operation ID
+	ld h, ESXDOS_ROM_ID
+	ld l, a
+	rst MODULECALL_NOPAGE
+	jp PAGEOUT
 .handled1:
 	ld (ZX_ERR_NR), a	; Save the error number in ZX sysvars
 	ld (v_errnr_save), a	; and ours.
@@ -174,7 +200,7 @@ J_rst8handler:
 	bit 7, (iy + D_FLAGS)	; Checking syntax?
 	jr nz, .cl_work1
 	bit 7, (iy + D_PPC_HI)	; Give error if line is not in editing area
-	jp z, J_err_6
+	jr z, J_err_6
 
 	; Remove all 6 byte FP numbers put in by the ZX ROM interpreter
 	dec hl			; balance inc below
@@ -212,7 +238,7 @@ J_rst8handler:
 J_err_6:
 	ld hl, (v_chaddsave)	; restore initial CH_ADD
 	ld (ZX_CH_ADD), hl
-	jp J_romerr		; Main rom error handler
+	jr J_romerr		; Main rom error handler
 
 ;---------------------------------------------------------------------------
 ; J_rst8done
@@ -342,7 +368,7 @@ J_reporterr:
 ;---------------------------------------------------------------------------
 ; Generic default error message, morally equivalent to 'Nonsense in BASIC'
 ; but different so it's easy to tell we generated it.
-STR_badcmd:	defb "Bad command",0
+STR_badcmd:	defb "?",0
 
 ;===========================================================================
 ; The extra command parser.
@@ -389,6 +415,24 @@ F_parser:
 	inc hl
 	jr .ploop3
 .notfound3:
+	; Dot commands are a fallback: ordinary BASIC extensions get first
+	; refusal, including any built-in compatibility command.
+	ld hl, (ZX_CH_ADD)
+	inc hl
+	ld a, (hl)
+	cp '.'
+	jr nz, .restorepage3
+
+	ld (v_esxdos_basic_iy), iy
+	ld a, 5
+	call F_setpageB
+	; Enter the Z branch of esxdos.module's fixed entry dispatch directly.
+	; This avoids J_moduledispatch and therefore leaves no page-B frame.
+	xor a
+	pop de			; discard F_parser's return address: DOT does not return
+	jp 0x2012		; jp z, F_esxdos_dot (after ld a,l / and a at $2010)
+
+.restorepage3:
 	ld a, (v_origpageb)	; restore page B
 	call F_setpageB
 	ret	
@@ -427,5 +471,3 @@ F_pstrcmp:
 	cp (hl)			; set zero flag if OK
 	ld a, b			; return with char at CH_ADD 
 	ret
-
-

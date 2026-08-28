@@ -23,10 +23,11 @@
 ; Page allocation routines, that allows code (mostly ROM modules) to reserve
 ; a page of static RAM in some kind of orderly way.
 ;
-; The last 6 pages of RAM are used for temporary workspace and can't be
-; reserved. (Anyone can use them, though, but another module or program
-; can also write there). The first page (0xC0) is permanently mapped to
-; 0x3000-0x3FFF and can't be reserved either.
+; Pages 0xD8 and 0xD9 are reserved for dot-command images. The last 6 pages
+; of RAM are used for temporary workspace and can't be reserved. (Anyone
+; can use them, though, but another module or program can also write there).
+; The first page (0xC0) is permanently mapped to 0x3000-0x3FFF and can't be
+; reserved either.
 ;
 ; The rest of RAM should only be used after being reserved to ensure that
 ; you don't trample on the workspace of a ROM module. Reservation routines
@@ -43,7 +44,7 @@
 .text
 .globl F_reservepage
 F_reservepage:
-	ld b, 25		; number of RAM pages that can be reserved
+	ld b, 23		; C1-D7; D8-D9 are dot pages, DA-DF is workspace
 	ld hl, pagealloc	; search the page allocation table for a page 
 	ex af, af'		; save A
 .searchloop1:

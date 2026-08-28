@@ -25,7 +25,7 @@
 .data
 .globl STR_installed
 .globl STR_datarom
-STR_installed:	defb "Current configuration",NEWLINE,"=====================",NEWLINE,NEWLINE,0
+STR_installed:	defb "Current configuration",NEWLINE,"=====================",NEWLINE,0
 STR_datarom:	defb "-- data --",NEWLINE,0
 
 .globl STR_menutitle
@@ -33,7 +33,7 @@ STR_datarom:	defb "-- data --",NEWLINE,0
 .globl STR_remmodule
 .globl STR_repmodule
 .globl STR_exit
-STR_menutitle:	defb NEWLINE,NEWLINE,"ROM configuration menu",NEWLINE,"======================",NEWLINE,NEWLINE,0
+STR_menutitle:	defb NEWLINE,"ROM configuration menu",NEWLINE,"======================",NEWLINE,0
 STR_addmodule:	defb "Add a new ROM module",0
 STR_repmodule:	defb "Replace an existing module",0
 STR_remmodule:	defb "Remove a ROM module",0

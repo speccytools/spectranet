@@ -27,6 +27,8 @@
 TRAPSET		equ 0x023B	; CPLD programmable trap (write only)
 PAGEA		equ 0x003B	; CPLD page area A 4k page (8 bit) (wo)
 PAGEB		equ 0x013B	; CPLD page area B 4k page (8 bit) (wo)
+PAGE0REG	equ 0x053B	; SpectraNext section 0 page selector (wo)
+PAGE3REG	equ 0x063B	; SpectraNext section 3 page selector (wo)
 ;CTRLREG		equ 0x033B	; CPLD control register (rw)
 
 ; Control register bit mask

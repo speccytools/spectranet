@@ -34,6 +34,9 @@
 F_settrap:
 	ld hl, INTERPWKSPC
 	call F_basstrcpy	; get the string from the interpreter
+
+.globl F_settrap_path
+F_settrap_path:
 	
 	ld a, (v_trapfd)	; File already open?
 	and a			; if so this will be nonzero
@@ -54,6 +57,21 @@ F_settrap:
 
 	ld hl, TAPETRAPBLOCK	; Program the CPLD NMI trap
 	call SETTRAP
+	ret
+
+; Module-call entry used by the esxDOS compatibility module. The kernel has
+; already staged the DOT pathname and passed it as IX, which keeps it valid
+; while this module pages its VFS dependencies.
+.globl F_basext_tapein_open
+F_basext_tapein_open:
+	push ix
+	pop hl
+	jp F_settrap_path
+
+.globl F_basext_tapein_close
+F_basext_tapein_close:
+	call F_releasetrap
+	or a
 	ret
 
 TAPETRAPBLOCK:
@@ -233,4 +251,3 @@ F_bootfile:
 DEFAULTFILE:
 	defb	"boot.zx6",0
 DEFAULTFILELEN: equ $-DEFAULTFILE
-

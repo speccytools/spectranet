@@ -30,10 +30,10 @@ spdos_gen_pl:	$(PROCESS_ASM)
 
 .PHONY:	spdos_gen spdos_gen_pl
 
-$(PLIBNAME).lib: $(PASMFILES) $(GEN_PASM) getmountpoint.asm
+$(PLIBNAME).lib: $(PASMFILES) $(GEN_PASM) getmountpoint_p.asm
 	$(LIBLINKER) $(LIBLDFLAGS) -x$(PLIBNAME) @$(PASMFILES)
 
-$(NPLIBNAME).lib: $(NPASMFILES) $(GEN_NPASM) getmountpoint.asm
+$(NPLIBNAME).lib: $(NPASMFILES) $(GEN_NPASM) getmountpoint_np.asm
 	$(LIBLINKER) $(LIBLDFLAGS) -x$(NPLIBNAME) @$(NPASMFILES)
 
 install: $(PLIBNAME).lib $(NPLIBNAME).lib

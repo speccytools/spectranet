@@ -28,7 +28,65 @@
 .include	"sysvars.inc"
 .include	"zxsysvars.inc"
 .include	"stdmodules.inc"
+.include	"ctrlchars.inc"
 .text
+ZX_ADD_CHAR	equ	0x0F81
+ZX_MAIN_3	equ	0x12CF
+
+;----------------------------------------------------------------------------
+; F_tbas_index / F_tbas_browser
+; Launch built-in TAP programs by injecting a fresh BASIC command line.
+; Syntax: ! / %browser
+.globl F_tbas_index
+F_tbas_index:
+	ld hl, INDEX_TAP_PATH
+	jr F_tbas_load_tap
+
+.globl F_tbas_browser
+F_tbas_browser:
+	ld hl, BROWSER_TAP_PATH
+
+F_tbas_load_tap:
+	push hl
+	call STATEMENT_END
+
+	rst CALLBAS
+	defw ZX_SET_MIN
+	ld a, 0
+	rst CALLBAS
+	defw ZX_CHAN_OPEN
+	ld a, 0xFF
+	ld (ZX_TV_FLAG), a
+
+	ld hl, LOAD_TAP_PREFIX
+	call .addstr1
+	pop hl
+	call .addstr1
+	ld hl, LOAD_TAP_SUFFIX
+	call .addstr1
+	jr .runline1
+
+.addstr1:
+	ld a, (hl)
+	and a
+	ret z
+	push hl
+	rst CALLBAS
+	defw ZX_ADD_CHAR
+	pop hl
+	inc hl
+	jr .addstr1
+
+.runline1:
+	xor a
+	ld (v_interpflags), a
+	ei
+	ld sp, (ZX_ERR_SP)
+	ld (iy + D_ERR_NR), 0xFF
+	ld hl, ZX_MAIN_3
+	push hl
+	jp PAGEOUT
+
 ;---------------------------------------------------------------------------
 ; F_tbas_mount
 ; BASIC interpreter for "mount"
@@ -72,8 +130,7 @@ F_tbas_mount:
 	defw ZX_FIND_INT2
 	ld a, c				; mount point in BC
 	call MOUNT
-	jp c, J_tbas_error		; display the error message
-	jp EXIT_SUCCESS
+	jp F_tbas_vfs_exit
 
 .runtime_implicit1:
 	; -------- Runtime for %mount "url" ---------
@@ -170,14 +227,21 @@ F_tbas_umount:
 	defw ZX_FIND_INT2
 	ld a, c				; mount point is in BC	
 	call UMOUNT
-	jp c, J_tbas_error
-	jp EXIT_SUCCESS	
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_chdir
 ; Handle changing directory
 .globl F_tbas_chdir
 F_tbas_chdir:
+	rst CALLBAS
+	defw ZX_GET_CHAR		; inspect first argument
+	cp 0x0D
+	jr z, .printcwd1
+	cp ':'
+	jp z, PARSE_ERROR
+	cp '"'
+	jr nz, .literal9
 	rst CALLBAS
 	defw ZX_EXPT_EXP		; expect a string expression
 	call STATEMENT_END
@@ -189,8 +253,69 @@ F_tbas_chdir:
 	call F_basstrcpy		; convert to a C string
 	ld hl, INTERPWKSPC
 	call CHDIR
+	jp F_tbas_vfs_exit
+
+.literal9:
+	call F_tbas_raw_arg
+	call STATEMENT_END
+
+	;-------- runtime --------
+	ld hl, INTERPWKSPC
+    call CHDIR
+    jp F_tbas_vfs_exit
+
+.printcwd1:
+	call STATEMENT_END
+	bit 7, (iy + D_FLAGS)		; syntax check only?
+	jp z, EXIT_SUCCESS
+	ld de, INTERPWKSPC
+	call GETCWD
 	jp c, J_tbas_error		; carry set = error
+	ld a, 2
+	rst CALLBAS			; set channel to 2
+	defw ZX_CHAN_OPEN
+	ld hl, INTERPWKSPC
+	call F_tbas_zxprint
+	ld a, ZXNEWLINE
+	rst CALLBAS
+	defw ZX_PRINT_A_1
 	jp EXIT_SUCCESS
+
+; Copy a literal BASIC command argument to INTERPWKSPC.
+; CH_ADD starts on the separator after the command name. The raw argument is
+; copied up to ':' or ENTER and returned as a null-terminated string.
+; Returns A holding the statement terminator for STATEMENT_END.
+F_tbas_raw_arg:
+	ld hl, (ZX_CH_ADD)
+.skipspace2:
+	ld a, (hl)
+	cp ' '
+	jr nz, .copy2
+	inc hl
+	jr .skipspace2
+.copy2:
+	ld de, INTERPWKSPC
+.copyloop2:
+	ld a, (hl)
+	cp ':'
+	jr z, .done2
+	cp 0x0D
+	jr z, .done2
+	ld (de), a
+	inc de
+	inc hl
+	jr .copyloop2
+.done2:
+	ld (ZX_CH_ADD), hl
+	push af
+	xor a
+	ld (de), a
+	pop af
+	ret
+
+F_tbas_vfs_exit:
+	jp nc, EXIT_SUCCESS
+	jp J_tbas_error
 
 ;---------------------------------------------------------------------------
 ; F_tbas_aload: Loads an arbitary file from the TNFS filesystem.
@@ -221,8 +346,7 @@ F_tbas_aload:
 	ld hl, INTERPWKSPC
 	pop de				; retrieve address
 	call F_tbas_readrawfile
-	jp c, J_tbas_error
-	jp EXIT_SUCCESS
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_asave: Saves an arbitrary file to the TNFS filesystem.
@@ -254,8 +378,7 @@ F_tbas_asave:
 	pop bc				; length
 	ld hl, INTERPWKSPC
 	call F_tbas_writerawfile
-	jp c, J_tbas_error
-	jp EXIT_SUCCESS
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_load: Loads a ZX file (BASIC, CODE etc.)
@@ -291,8 +414,7 @@ F_tbas_load:
 	ld hl, INTERPWKSPC
 	pop af				; get type id
 	call F_tbas_loader
-	jp c, J_tbas_error
-	jp EXIT_SUCCESS
+	jp F_tbas_vfs_exit
 
 .loadcode6:
 	; TODO - code to a specific address.
@@ -355,8 +477,7 @@ F_tbas_save:
 	pop hl				; and the length
 	ld (INTERPWKSPC+OFFSET_LENGTH), hl	; and put it in the header
 	call F_tbas_writefile		; finally write it out
-	jp c, J_tbas_error
-	jp EXIT_SUCCESS
+	jp F_tbas_vfs_exit
 	
 .savescreen7:
 	rst CALLBAS
@@ -403,8 +524,7 @@ F_tbas_save:
 	pop bc				; retrieve filename
 	pop de
 	call F_tbas_writefile		; Write it out.
-	jp c, J_tbas_error
-	jp EXIT_SUCCESS
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_ls
@@ -448,6 +568,12 @@ F_tbas_ls:
 .globl F_tbas_tapein
 F_tbas_tapein:
 	rst CALLBAS
+	defw ZX_GET_CHAR		; inspect first argument
+	cp '"'
+	jr nz, .literal8
+
+.expression8:
+	rst CALLBAS
 	defw ZX_EXPT_EXP		; expect a string expression
 	call STATEMENT_END
 	
@@ -455,6 +581,18 @@ F_tbas_tapein:
 	rst CALLBAS
 	defw ZX_STK_FETCH		; get the string
 	call F_settrap
+	jp F_tbas_vfs_exit
+
+.literal8:
+	cp ':'
+	jp z, PARSE_ERROR
+	cp 0x0D
+	jp z, PARSE_ERROR
+	call F_tbas_raw_arg
+	call STATEMENT_END
+
+	;-------- runtime --------
+	call F_settrap_path
 	jp c, J_tbas_error		; carry set = error
 	jp EXIT_SUCCESS
 
@@ -471,8 +609,7 @@ F_tbas_info:
 	rst CALLBAS
 	defw ZX_STK_FETCH
 	call F_showfileinfo		; Try to open the file and show
-	jp c, J_tbas_error		; the information.
-	jp EXIT_SUCCESS
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_fs
@@ -537,8 +674,7 @@ F_tbas_mv:
 	ld hl, INTERPWKSPC+256
 	call F_basstrcpy		; copy to workspace
 	call F_move
-	jp nc, EXIT_SUCCESS
-	jp J_tbas_error
+	jp F_tbas_vfs_exit
 
 ;---------------------------------------------------------------------------
 ; F_tbas_rm: Removes a file
@@ -551,8 +687,7 @@ F_tbas_rm:
 	;-------- runtime ---------
 	call F_get_stringarg
 	call UNLINK			; remove the file
-	jp nc, EXIT_SUCCESS
-	jp J_tbas_error
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_mkdir: Makes a directory
@@ -565,8 +700,7 @@ F_tbas_mkdir:
 	; ------- runtime ------
 	call F_get_stringarg
 	call MKDIR
-	jp nc, EXIT_SUCCESS
-	jp J_tbas_error
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_rmdir: Makes a directory
@@ -579,8 +713,7 @@ F_tbas_rmdir:
 	; ------- runtime ------
 	call F_get_stringarg
 	call RMDIR
-	jp nc, EXIT_SUCCESS
-	jp J_tbas_error
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_chmod: Change file mode / pass filesystem-specific control flags
@@ -609,8 +742,7 @@ F_tbas_chmod:
 	ld hl, INTERPWKSPC
 	pop de				; mode for CHMOD
 	call CHMOD
-	jp nc, EXIT_SUCCESS
-	jp J_tbas_error
+	jp F_tbas_vfs_exit
 
 ;----------------------------------------------------------------------------
 ; F_tbas_copy: Copies a file
@@ -637,9 +769,30 @@ F_tbas_copy:
 	ld hl, INTERPWKSPC+256		; src in INTERPWKSPC+256
 	call F_basstrcpy
 	call F_copy
-	jp nc, EXIT_SUCCESS
-	jp J_tbas_error
-	
+	jp F_tbas_vfs_exit
+
+LOAD_TAP_PREFIX:
+	defb	"%tapein "
+	defb	34
+	defb	0
+
+BROWSER_TAP_PATH:
+	defb	"/sys/browser.tap"
+	defb	0
+
+INDEX_TAP_PATH:
+	defb	"/sys/index.tap"
+	defb	0
+
+LOAD_TAP_SUFFIX:
+	defb	34
+	defb	" : "
+	defb	0xEF
+	defb	" "
+	defb	34
+	defb	34
+	defb	13
+	defb	0
 
 ;----------------------------------------------------------------------------
 ; F_tbas_zxprint

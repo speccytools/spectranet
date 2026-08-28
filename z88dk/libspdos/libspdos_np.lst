@@ -22,4 +22,4 @@ stat_np.asm
 stat_isdir_np.asm
 chmod_np.asm
 fscommit_np.asm
-getmountpoint.asm
+getmountpoint_np.asm

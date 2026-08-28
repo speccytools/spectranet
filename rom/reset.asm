@@ -72,8 +72,6 @@ J_reset:
 	call F_clear		; clear the screen
 	ld hl, STR_bootmsg	
 	call F_print		; show the boot message
-	ld hl, bldstr
-	call F_print
 
 	; Initialize some system variables that need it.
 
@@ -83,9 +81,20 @@ J_reset:
 	ld bc, 0x243B
 	ld a, 0x8A
 	out (c), a
-	ld bc, 0x253B
+	inc b
 	in a, (c)
 	or 0x01
+	out (c), a
+
+	; ZX Spectrum Next: disable expansion-bus NMI debounce. Spectranet
+	; generates short NMI pulses; the default debounce keeps /NMI low
+	; for too long and can hide the next programmable trap edge.
+	dec b
+	ld a, 0x81
+	out (c), a
+	inc b
+	in a, (c)
+	or 0x20
 	out (c), a
 
 	; This is a rather poor way of generating a random number seed,
@@ -209,4 +218,3 @@ F_initroms:
 .data
 STR_bootmsg:
 	defb "Alioth Spectranet ",0
-	include "ver.xinc"	; include the build number file

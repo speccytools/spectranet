@@ -1,4 +1,4 @@
-; No Spectranet dispatch — same object linked into both libraries.
+; Non-paging variant for modules which already run with Spectranet paged in.
 PUBLIC getmountpoint
 .getmountpoint
 	push	ix
