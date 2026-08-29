@@ -99,6 +99,8 @@ F_inputstring:
 .keyloop3:
 	call F_keyup		; wait for keyup before doing anything
 	call F_getkey		; wait for a key to be pressed.
+	cp '0'			; DELETE is a shifted 0: let that chord settle.
+	jr nz, .keyready3
 	push hl
 	ld hl, 0x1000		; wait some more time so that 
 .loop3:				; multi key contacts on Spectrum + / 128
@@ -108,7 +110,11 @@ F_inputstring:
 	jr nz, .loop3
 	pop hl
 
-	call F_getkey		; closed.
+	call F_getkey		; read the settled DELETE/0 chord
+	cp KEY_BACKSPACE
+	jr z, .keyready3
+	ld a, '0'			; a quick following key must not eat the zero
+.keyready3:
 	cp KEY_ENTER		; enter pressed?
 	jr z, .enter3		; handle enter
 	cp KEY_BACKSPACE	; backspace pressed?
@@ -126,14 +132,14 @@ F_inputstring:
 	inc hl			; update pointer
 	ld (v_stringptr), hl	; save pointer
 	call F_putc_5by8	; and print the char
-	ld a, (v_stringlen)	; get the remaining byte count
-	dec a			; decrement it
-	ld (v_stringlen), a	; save remaining length	
+	ld hl, v_stringlen
+	dec (hl)			; decrement the remaining byte count
 	jr .inputloop3		; and wait for the next key.	
 .backspace3:
-	ld bc, (v_stringlen)	; is the cursor at the start
-	ld a, c			; of the string?
-	cp b			
+	ld hl, v_stringlen	; is the cursor at the start
+	ld a, (hl)			; of the string?
+	inc hl
+	cp (hl)
 	jr z, .keyloop3		; yes - so just wait for another key.
 
 	; To update the screen, the cursor and the character behind
@@ -152,4 +158,3 @@ F_inputstring:
 	ld hl, (v_stringptr)	; get the string pointer
 	ld (hl), 0		; put the null terminator on the string
 	ret
-

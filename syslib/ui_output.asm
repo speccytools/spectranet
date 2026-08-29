@@ -277,7 +277,24 @@ F_erasechar_impl:
 F_backspace_impl:
 	ld a, (v_column)
 	and a		; Are we at column 0?
-	ret z		; nothing more to do (possible TODO - go back a line)
+	jr nz, .same_row3
+	ld a, (v_rowcount)
+	and a
+	ret z		; nothing more to do at the top-left of the screen
+	dec a
+	ld (v_rowcount), a
+	ld hl, (v_row)
+	ld a, l
+	sub 32		; back to the preceding 8-pixel character row
+	ld l, a
+	jr nc, .previous_row3
+	ld a, h		; crossing a Spectrum screen third
+	sub 8
+	ld h, a
+.previous_row3:
+	ld (v_row), hl
+	ld a, 42		; .same_row3 decrements this to column 41
+.same_row3:
 	dec a		; move column pointer one space back
 	ld (v_column), a ; and store it
 	jp F_erasechar_impl	; then erase the character that's there.
@@ -302,4 +319,3 @@ F_clear_impl:
 	ld hl, 16384
 	ld (v_row), hl
 	ret
-
