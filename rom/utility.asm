@@ -68,7 +68,7 @@ F_rand16:
 F_ipstring2long:
 	call F_util_getroutine
 	call F_ipstring2long_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;-----------------------------------------------------------------------
 ; F_long2ipstring
@@ -79,7 +79,7 @@ F_ipstring2long:
 F_long2ipstring:
 	call F_util_getroutine
 	call F_long2ipstring_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;-----------------------------------------------------------------------
 ; F_mac2string
@@ -90,7 +90,7 @@ F_long2ipstring:
 F_mac2string:
 	call F_util_getroutine
 	call F_mac2string_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;-----------------------------------------------------------------------
 ; F_string2mac
@@ -102,7 +102,7 @@ F_mac2string:
 F_string2mac:
 	call F_util_getroutine
 	call F_string2mac_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;-----------------------------------------------------------------------
 ; F_atoi8: Simple ascii-to-int 8 bit. hl=ptr to string. Positive values!
@@ -113,7 +113,7 @@ F_string2mac:
 F_atoi8:
 	call F_util_getroutine
 	call F_itoa8_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;------------------------------------------------------------------------
 ; F_itoa8:
@@ -125,7 +125,7 @@ F_atoi8:
 F_itoa8:
 	call F_util_getroutine
 	call F_itoa8_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;-------------------------------------------------------------------------
 ; F_itoh8
@@ -137,7 +137,7 @@ F_itoa8:
 F_itoh8:
 	call F_util_getroutine
 	call F_itoh8_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;---------------------------------------------------------------------------
 ; F_htoi8
@@ -148,7 +148,7 @@ F_itoh8:
 F_htoi8:
 	call F_util_getroutine
 	call F_htoi8_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;-------------------------------------------------------------------------
 ; F_crc16:
@@ -162,7 +162,7 @@ F_htoi8:
 F_crc16:
 	call F_util_getroutine
 	call F_crc16_u_impl
-	jp F_util_restore
+	jr F_util_restore
 
 ;--------------------------------------------------------------------------
 ; F_checkromsig
@@ -194,4 +194,3 @@ F_util_restore:
         call F_setpageB
         pop af
         ret
-

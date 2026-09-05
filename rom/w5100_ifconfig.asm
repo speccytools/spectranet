@@ -156,4 +156,3 @@ F_deconfig:
 	ld bc, 4
 	ldir
 	jp J_leavesockfn
-

@@ -7,6 +7,11 @@ P0OUT = page0.bin
 P0LDFLAGS = -T page0.ld -Map $(P0OUT).map -L ../syslib
 P0LIBS = -lpager
 
+SPXCONTROLLEROBJS = spxcontroller.o
+SPXCONTROLLEROUT = /build/spxcontroller/spxcontroller.bin
+SPXCONTROLLERSIZE = /build/spxcontroller/spxcontroller_size.h
+SPXCONTROLLERLDFLAGS = -T spxcontroller.ld -Map $(SPXCONTROLLEROUT).map
+
 P1OBJS = ui_keyscan.o ui_funcs.o
 P1OUT = page1.bin
 P1LDFLAGS = -T page1.ld -Map $(P1OUT).map -L ../syslib
@@ -48,7 +53,7 @@ P0SYMS = page0.xinc
 INSTALLDIR = ../installer
 CP = cp -f
 
-all:	page0 page1 page2 page3 jptable kesxdos kesxdosjp
+all:	page0 page1 page2 page3 spxcontroller jptable kesxdos kesxdosjp
 
 page0:	ver p1syms p2syms p3syms $(P0OBJS)
 	$(LD) -o $(P0OUT) $(P0OBJS) $(P0LDFLAGS) $(P0LIBS)
@@ -65,6 +70,11 @@ page2:	modman $(P2OBJS)
 page3:	date ver $(P3OBJS)
 	$(LD) -o $(P3OUT) $(P3OBJS) $(P3LDFLAGS) $(P3LIBS)
 	$(CP) $(P3OUT) $(INSTALLDIR)
+
+spxcontroller: $(SPXCONTROLLEROBJS) spxcontroller.ld
+	mkdir -p $(dir $(SPXCONTROLLEROUT))
+	$(LD) -o $(SPXCONTROLLEROUT) $(SPXCONTROLLEROBJS) $(SPXCONTROLLERLDFLAGS)
+	printf '#define SPXCONTROLLER_BIN_SIZE %s\n' "$$(stat -c %s $(SPXCONTROLLEROUT))" > $(SPXCONTROLLERSIZE)
 
 modman:	$(MODMANOBJS)
 	$(LD) -o $(MODMANOUT) $(MODMANOBJS) $(MODMANLDFLAGS) $(MODMANLIBS)

@@ -372,4 +372,3 @@ F_checkpageA:
 	ld a, (v_buf_pga)	; get page A value
 	call F_setpageB		; page it in
 	ret	
-

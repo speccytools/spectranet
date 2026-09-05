@@ -40,10 +40,11 @@
 ; Finds a free hardware socket and allocates it to a file descriptor.
 ; The full BSD routine is int socket(int family, int type, int proto)
 ; but this function will always be specific to AF_INET sockets, so
-; only the type parameter is used. This should be SOCK_STREAM, SOCK_DGRAM
-; or SOCK_RAW.
+; type should be SOCK_STREAM, SOCK_DGRAM or SOCK_RAW. For SOCK_STREAM only,
+; DE may contain a Spectranext backend selector. Both bytes must match, so
+; legacy direct ROM callers which do not initialise DE remain plain TCP.
 ;
-; Parameters: C = int type
+; Parameters: C = int type, DE = int protocol selector
 ; Returns: file descriptor in A
 ;
 ; Preserves: BC
@@ -63,6 +64,14 @@ F_socket:
 	ld a, ESNFILE		; no more hardware sockets, sorry
 	jp J_leavesockfn
 .foundsock1:
+	ld a, c
+	dec a
+	jr nz, .socketproto1
+	inc d			; high byte of the Spectranext selectors is 0xFF
+	jr nz, .socketproto1
+	ld l, Sn_PROTO % 256
+	ld (hl), e		; 0xF0 TLS or 0xF1 SSH; other values remain TCP
+.socketproto1:
 	ld de, v_fd1hwsock	; (de) = fd map first entry
 	ex de, hl
 .findfd1:
@@ -306,8 +315,8 @@ F_hwallocsock:
 ; 	      HL = pointer to socket register area
 .globl F_hwopensock
 F_hwopensock:
-	ld a, SOCK_STREAM	; for SOCK_STREAM ensure delayed ACK is off
-	cp c
+	ld a, c			; for SOCK_STREAM ensure delayed ACK is off
+	dec a
 	jr nz, .continue5
 	set 5, c		; set 'use no delayed ACK'
 .continue5:
@@ -336,4 +345,3 @@ F_hwopensock:
 	cp S_SR_SOCK_UDP	; Successfully initialized?
 	ret z
 	jr .failed5
-
