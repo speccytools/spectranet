@@ -41,6 +41,7 @@
 .include	"zxrom.inc"
 .include	"zxsysvars.inc"
 .include	"ctrlchars.inc"
+.include	"errno.inc"
 .include	"fcntl.inc"
 .include	"stdmodules.inc"
 .include	"automount.inc"
@@ -115,10 +116,29 @@ F_loadresource_modcall:
 	rst MODULECALL_NOPAGE
 	ret c
 
-	ld a, 2
+	; Resource mounts may use any available slot, including slot 0. Keep the
+	; selected slot in C because MOUNT is free to alter the other registers.
+	ld hl, VFSVECBASE
+	ld b, 4
+	ld c, 0
+.find_resource_mount:
+	ld a, (hl)
+	and a
+	jr z, .resource_mount_found
+	inc hl
+	inc c
+	djnz .find_resource_mount
+	ld a, TMPBUSY
+	scf
+	ret
+
+.resource_mount_found:
+	push bc
+	ld a, c
 	call MOUNT
+	pop bc
 	ret c
-	ld a, 2
+	ld a, c
 	call SETMOUNTPOINT
 	ret c
 
