@@ -104,6 +104,63 @@ F_boot:
 	ret
 
 ;--------------------------------------------------------------------------
+; F_loadresource_modcall: Mount and load a resource URL for applications.
+; Parameters: DE = pointer to a null-terminated URL in Spectrum RAM.
+; Returns carry set and A = error code on failure. On success, boot.zx is
+; loaded and its autorun is prepared before returning to the caller.
+.globl F_loadresource_modcall
+F_loadresource_modcall:
+	ld ix, INTERPWKSPC
+	ld hl, PARSEURL
+	rst MODULECALL_NOPAGE
+	ret c
+
+	ld a, 2
+	call MOUNT
+	ret c
+	ld a, 2
+	call SETMOUNTPOINT
+	ret c
+
+	; Reset the BASIC editing area just as the normal boot hook does before
+	; replacing the current program, while leaving the caller's stack intact.
+	rst CALLBAS
+	defw ZX_SET_MIN
+	ld a, 0
+	rst CALLBAS
+	defw ZX_CHAN_OPEN
+	ld a, 0xFF
+	ld (ZX_ERR_NR), a
+
+	; The filesystem call pages another module into area B, so copy the
+	; paged-module filename to common RAM before invoking the loader.
+	ld hl, STR_BOOTDOTZX
+	ld de, INTERPWKSPC
+	ld bc, STR_BOOTDOTZXLEN
+	ldir
+	ld hl, INTERPWKSPC
+	xor a			; file type = BASIC
+	call F_tbas_loader
+	ret c
+
+	; Match the successful F_boot autorun setup. The application that made
+	; the module call can now exit normally and return control to BASIC.
+	ld a, (INTERPWKSPC+OFFSET_PARAM1+1)
+	and 0xC0
+	jr nz, .resource_loaded
+	ld hl, (ZX_NEWPPC)
+	ld (ZX_OLDPPC), hl
+	ld a, 0xE8		; keyword CONTINUE
+	rst CALLBAS
+	defw 0x0F81		; ADD-CHAR
+	ld a, NEWLINE
+	rst CALLBAS
+	defw 0x0F81
+.resource_loaded:
+	or a			; success: clear carry
+	ret
+
+;--------------------------------------------------------------------------
 ; F_shouldboot: See if we should boot (either configured to do so or
 ; SHIFT is pressed down) Zero flag is set if we should boot, non zero
 ; return if not.

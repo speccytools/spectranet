@@ -36,6 +36,7 @@ AUTOBOOT		equ 0x81	; Config ID for autoboot flag
 ROM_ID			equ 0xFD
 BAS_EXT_TAPEIN_OPEN	equ 0x01
 BAS_EXT_TAPEIN_CLOSE	equ 0x02
+BAS_EXT_LOAD_RESOURCE_URL equ 0x00
 
 INTERPWKSPC		equ 0x3003	; workspace
 SN_SCR_CT		equ 0x3000	; scroll count

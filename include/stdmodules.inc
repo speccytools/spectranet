@@ -26,6 +26,9 @@
 PARSEURL	equ	0xFA00		; Parses an URL in DE, result in IX
 AUTOMOUNT	equ	0xFA01		; Runs the automounter
 
+; BASIC extensions module
+LOAD_RESOURCE_URL equ 0xFD00		; DE = URL; mount and load boot.zx
+
 ; Configuration module
 CFG_COPYCONFIG          equ 0xFE01
 CFG_FINDSECTION         equ 0xFE02

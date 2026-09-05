@@ -38,6 +38,8 @@ J_basext_modcall:
 	jp z, F_basext_tapein_open
 	cp BAS_EXT_TAPEIN_CLOSE
 	jp z, F_basext_tapein_close
+	cp BAS_EXT_LOAD_RESOURCE_URL
+	jp z, F_loadresource_modcall
 	ld a, 20			; esxDOS ENOSYS
 	scf
 	ret
