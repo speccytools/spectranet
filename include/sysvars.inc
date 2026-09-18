@@ -6,6 +6,10 @@ v_nmi_iff2: equ NMISTACK-4
 buf_moduleworkspace: equ 0x00003900
 TABLE_basext: equ 0x00003A00
 buf_message: equ 0x00003B00
+; Four-byte initialization-complete marker.  The kESXDOS bridge uses
+; $3C00-$3C11 and its path workspace begins at $3C20, leaving this gap
+; available as persistent fixed-RAM state.
+v_init_magic: equ 0x00003C18
 buf_workspace: equ 0x00003D00
 v_column: equ 0x00003F00
 v_row: equ 0x00003F01

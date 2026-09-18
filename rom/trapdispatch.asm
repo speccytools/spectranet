@@ -27,7 +27,7 @@
 ;---------------------------------------------------------------------------
 ; do_callbas
 ; Not really a trap, but it handles the effects of an RST 0x10 'callbas'
-; exit (which will get re-trapped by a subsequent return via RST 8)
+; exit. The Spectrum ROM routine returns through the fixed-RAM PAGEIN entry.
 .text
 .globl do_callbas
 do_callbas:
@@ -36,9 +36,7 @@ do_callbas:
 	ld d, (hl)
 	inc hl			; hl now is the return address
 	push hl			; put the return address back on the stack
-	ld hl, 0		; entry code to RST 8
-	push hl
-	ld hl, 8		; return address for Spectrum ROM to return
+	ld hl, PAGEIN		; page in Spectranet when the ROM call returns
 	push hl
 	push de			; the actual address in ROM we want to call
 	ld hl, (v_hlsave)	; restore HL
@@ -84,3 +82,25 @@ do_rst8:
 	ld de, (v_desave)	; restore de
 	ret			; go back to the calling routine.
 
+;---------------------------------------------------------------------------
+; J_esxdos_rst8_rejected
+; Entered at Spectranet ROM $0058 after esxDOS 0.8.9 has declined a BASIC
+; RST 8 request. esxDOS has consumed the inline error byte and established
+; ERR_NR/X_PTR already, so the raw do_rst8 stack and register prologue must
+; not be repeated.
+.globl J_esxdos_rst8_rejected
+J_esxdos_rst8_rejected:
+	ld a, (ZX_ERR_NR)
+	cp 0x0B		; Nonsense in BASIC is the extension hook
+	jr nz, .pass_to_zxrom
+	ld a, (v_tabletop)
+	and a			; no registered extensions
+	jr z, .pass_to_zxrom
+	jp J_rst8handler_rejected
+
+.pass_to_zxrom:
+	; The external one-shot was consumed before this entry was fetched.
+	; PAGEOUT is a RET, so stack $0058 for a fresh fetch from the ZX ROM.
+	ld hl, 0x0058
+	push hl
+	jp PAGEOUT

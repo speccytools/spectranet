@@ -35,7 +35,21 @@ F_basstart:
 	; A (because modules live in area B, where we want to call).
 	ld a, (v_pgb)
 	call SETPAGEA
+	ld hl, .trapdone2-0x1000
+	push hl
 	jp F_basstart_go-0x1000
+.trapdone2:
+	jp PAGETRAPRETURN
+
+; Run the BASSTART vectors from a normal call rather than an NMI trap.  The
+; return address belongs to fixed ROM, so it remains valid while this page is
+; moved from area B to area A and modules take turns in area B.
+.globl F_basstart_direct
+F_basstart_direct:
+	ld a, (v_pgb)
+	call SETPAGEA
+	jp F_basstart_go-0x1000
+
 .globl F_basstart_go
 F_basstart_go:
 	ld hl, vectors
@@ -63,7 +77,7 @@ F_basstart_go:
 	pop hl
 	jr .searchloop2
 .done2:
-	jp PAGETRAPRETURN
+	ret
 
 ;-------------------------------------------------------------------------
 ; F_basstart_setup
@@ -77,5 +91,4 @@ STARTTRAPBLOCK:
 	defw	F_basstart	; function to call
 	defw	0x1299		; stacked address at time of NMI
 	defw	0x1296		; address to trap with NMI
-
 

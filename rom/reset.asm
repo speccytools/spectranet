@@ -27,6 +27,8 @@
 .include	"ctrlchars.inc"
 .include	"stdmodules.inc"
 .include	"page3.xinc"
+.include	"zxrom.inc"
+.include	"zxsysvars.inc"
 
 ; Locations in the data rom that need to be copied.
 ; The jump table lives in the first 256 bytes of ROM3
@@ -34,6 +36,8 @@ JUMPTABLE_COPYFROM: 	equ 0x1F00
 JUMPTABLE_SIZE:		equ 0xF8
 UPPER_ENTRYPT:		equ 0x1FF8
 UPPER_ENTRYPT_SIZE:	equ 0x08
+INIT_MAGIC_0:		equ 0x53A7
+INIT_MAGIC_1:		equ 0xD91C
 
 ; Initialization routines that are run on reset.
 ;
@@ -54,9 +58,68 @@ J_reset:
 	ld a, b
 	or c
 	jr nz, .delay0
-	
+
+	; J_reset_common clears the entire fixed-RAM page, including NMISTACK.
+	; Keep this CALL's return address above the cartridge window until that
+	; clear has completed.  The deferred entry already arrives with such a
+	; high-memory stack supplied by its setup trampoline.
+	ld sp, 32767
+	call J_reset_common
+
+	; Restore the traditional private Spectranet stack for BASSTART callbacks.
+	ld sp, NMISTACK
+	ld a, 3			; Page where F_basstart lives
+	call F_setpageB
+	call F_basstart_setup
+	call F_clear
+
+	ld sp, 32767		; lowest guaranteed stack addr
+	ld hl, 0		; We're done so put 0x0000
+	push hl			; on the stack
+	jp PAGEOUT		; unpage (a ret instruction)
+
+; Software entry used after an OS-hosted dot command has safely left the
+; DivMMC environment.  It performs the same core initialization as reset,
+; runs BASSTART vectors immediately, and returns through the caller's stack.
+.globl J_deferred_init
+J_deferred_init:
+	; The dot command may be run repeatedly.  Do not clear fixed RAM or rerun
+	; module initialization once a previous cold or deferred startup completed.
+	ld hl, (v_init_magic)
+	ld de, INIT_MAGIC_0
+	or a
+	sbc hl, de
+	jr nz, .initialize_deferred0
+	ld hl, (v_init_magic+2)
+	ld de, INIT_MAGIC_1
+	or a
+	sbc hl, de
+	jr nz, .initialize_deferred0
+	jp PAGEOUT-1
+.initialize_deferred0:
+	call J_reset_common
+	call F_deferred_basic_colours
+	; Match the prompt NMI's two-stack layout. Keep BASIC's stack in NMISTACK
+	; for callbacks such as F_boot, then run the callback dispatcher on the
+	; private fixed-RAM stack so CALLBAS cannot overwrite its return frames.
+	ld (NMISTACK), sp
+	ld sp, NMISTACK-8
+	ld a, 3
+	call F_setpageB
+	call F_basstart_direct
+	; BASSTART modules are allowed to reshape the saved BASIC stack. Reconstruct
+	; the successful 48K BASIC continuation immediately before PAGEOUT's RET.
+	ld sp, (ZX_ERR_SP)
+	ld hl, ZX_STMT_R_1
+	push hl
+	; setup_main entered deferred initialization with interrupts disabled.
+	; Enter the zero-page EI; RET pair so the EI delay covers the page-out RET;
+	; a pending interrupt must not fetch $0038 while Spectranet is still paged.
+	jp PAGEOUT-1
+
+; Initialization shared by cold reset and deferred startup.
+J_reset_common:
 	; Clear upper page.
-	ld sp, NMISTACK		; use our own memory for the stack
 	ld hl, 0x3000		; Clear down the fixed RAM page.
 	ld de, 0x3001
 	ld bc, 0xFFF
@@ -152,21 +215,13 @@ J_reset:
 	call F_initroms		; Initialize any ROM modules we may have
 	ld hl, AUTOMOUNT	; call the automounter
 	rst MODULECALL_NOPAGE
-
-	; Detect machine type
-;	ld a, 0x03		; ROM with detect routine
-;	call F_setpageB
-;	call F_machinetype
-
-	ld a, 3			; Page where F_basstart lives
-	call F_setpageB
-	call F_basstart_setup
-	call F_clear
-
-	ld sp, 32767		; lowest guaranteed stack addr
-	ld hl, 0		; We're done so put 0x0000 
-	push hl			; on the stack
-	jp PAGEOUT		; unpage (a ret instruction)
+	; Publish completion only after ROM initialization and automount return.
+	; J_deferred_init uses both words to make accidental matches negligible.
+	ld hl, INIT_MAGIC_0
+	ld (v_init_magic), hl
+	ld hl, INIT_MAGIC_1
+	ld (v_init_magic+2), hl
+	ret
 
 ;------------------------------------------------------------------------
 ; F_initroms
@@ -214,6 +269,28 @@ F_initroms:
 	pop bc
 	pop hl
 	jr .initloop1
+
+; Split across two linker zones because reset.o fills the first guarded zone.
+; F_clear uses Spectranet's blue UI colours; deferred initialization instead
+; retains its bitmap while presenting it with stock BASIC's colours.
+.section defcolor
+F_deferred_basic_colours:
+	ld a, 7
+	out (ZX_IO_ULA), a
+	ld a, 0x38		; black ink on white paper
+	ld (ZX_BORDCR), a
+	jp F_deferred_basic_paper
+
+.section defpaper
+F_deferred_basic_paper:
+	ld (ZX_ATTR_P), a
+	ld (ZX_ATTR_T), a
+	ld hl, 0x5800
+	ld de, 0x5801
+	ld bc, 0x02ff
+	ld (hl), a
+	ldir
+	ret
 
 .data
 STR_bootmsg:

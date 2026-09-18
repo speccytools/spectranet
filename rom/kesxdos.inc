@@ -25,6 +25,8 @@ DOT_ESX_XFERDONE  equ 0x1C0C
 DOT_ESX_XFERCHUNK equ 0x1C0E
 DOT_DOT_ALT_HL    equ 0x1C10
 
+; $1C18-$1C1B aliases the fixed-RAM v_init_magic marker and is reserved.
+
 ; General pointer argument staging. This remains intentionally bounded because
 ; path-oriented VFS calls are allowed to use buf_workspace themselves.
 DOT_ESX_WORKSPACE equ 0x1C20

@@ -42,6 +42,11 @@
 RESET:
 	di		; This should be done already for a real reset.
 	jp J_reset
+	; Software-initiated warm entry.  The caller has already arranged a
+	; valid stack above the low 16K and expects PAGEOUT to return through it.
+.globl DEFERRED_INIT
+DEFERRED_INIT:
+	jp J_deferred_init
 
 .section rst8
 TRAPBAS:
@@ -71,6 +76,13 @@ INTERRUPT:			; 0x0038
 	ei
 	reti			; TODO - do something!
 
+; esxDOS 0.8.9 has already consumed and rejected the RST 8 request when this
+; entry is fetched. The paging hardware only exposes it for the one-shot
+; $1FFB -> $0058 rejection sequence.
+.section esxrej			; 0x0058
+ESXDOS_REJECT:
+	jp J_esxdos_rst8_rejected
+
 .section nmi			; 0x0066
 	ld (NMISTACK), sp	; save SP
 	ld sp, NMISTACK-8	; set up new stack
@@ -92,6 +104,7 @@ INTERRUPT:			; 0x0038
 UNPAGE:
 	ret
 .text
+.globl NMI2
 NMI2:
 	ld (v_nmi_ix), ix
 	ld (v_nmi_iy), iy

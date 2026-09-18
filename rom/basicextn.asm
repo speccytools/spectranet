@@ -120,6 +120,20 @@ J_esxdos_rst8:
 	ld hl, (ZX_CH_ADD)	; save current CH_ADD
 	ld (v_chaddsave), hl
 	pop af			; discard top value of the stack
+	jr J_rst8_basic_common
+
+; esxDOS has already consumed the inline error byte, stored it in ERR_NR and
+; prepared X_PTR before rejecting the request at $0058. There is no do_rst8
+; AF save on the stack, so enter the shared parser after that pop.
+.globl J_rst8handler_rejected
+J_rst8handler_rejected:
+	ld a, (ZX_ERR_NR)
+	ld (v_errnr_save), a
+	ld hl, (ZX_CH_ADD)
+	ld (v_chaddsave), hl
+
+.globl J_rst8_basic_common
+J_rst8_basic_common:
 	bit 5, (iy + D_FLAGX)	; Input mode?
 	jp nz, J_romerr
 	ld a, (v_interpflags)	; Check our flags
