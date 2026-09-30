@@ -101,6 +101,8 @@ SECTIONS
 .textz2 : {
         /* Whole helper section moved here to balance the guarded buckets. */
         w5100_genintfunc.o(.text)
+        *(.spxgate)
+        *(spxgate)
         } > pagez2
 .ldbytes055c : {
         *(.ldtrap)

@@ -32,6 +32,7 @@
 .text
 ZX_ADD_CHAR	equ	0x0F81
 ZX_MAIN_3	equ	0x12CF
+LAUNCHER_ENTRY	equ	0xF000
 
 ;----------------------------------------------------------------------------
 ; F_tbas_index / F_tbas_browser
@@ -86,6 +87,27 @@ F_tbas_load_tap:
 	ld hl, ZX_MAIN_3
 	push hl
 	jp PAGEOUT
+
+;----------------------------------------------------------------------------
+; %launcher runs the built-in high-RAM app directly.  The launcher ROM module
+; only copies the app; this command supplies a normal runtime BASIC return
+; address, so it works both at the prompt and after .spx in AUTOBOOT.BAS.
+.globl F_tbas_launcher
+F_tbas_launcher:
+	call STATEMENT_END
+	ld hl, LAUNCHER_LOAD
+	rst MODULECALL_NOPAGE
+	jp c, PARSE_ERROR
+
+	rst CALLBAS
+	defw ZX_SET_MIN
+	xor a
+	ld (v_interpflags), a
+	ld sp, (ZX_ERR_SP)
+	ld (iy + D_ERR_NR), 0xFF
+	ld hl, ZX_STMT_R_1
+	push hl
+	jp LAUNCHER_ENTRY
 
 ;---------------------------------------------------------------------------
 ; F_tbas_mount
@@ -531,6 +553,18 @@ F_tbas_tapein:
 	call F_settrap
 	jp F_tbas_vfs_exit
 
+; Mount-independent TAP source. The XFS module owns the resulting descriptor;
+; the same tape trap and READ/CLOSE path is used after this open succeeds.
+.globl F_tbas_xtapein
+F_tbas_xtapein:
+	rst CALLBAS
+	defw ZX_EXPT_EXP
+	call STATEMENT_END
+	rst CALLBAS
+	defw ZX_STK_FETCH
+	call F_settrap_xopen
+	jp F_tbas_vfs_exit
+
 ;----------------------------------------------------------------------------
 ; F_tbas_info
 ; Handle the %info command
@@ -707,7 +741,7 @@ F_tbas_copy:
 	jp F_tbas_vfs_exit
 
 LOAD_TAP_PREFIX:
-	defb	"%tapein "
+	defb	"%xtapein "
 	defb	34
 	defb	0
 

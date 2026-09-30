@@ -37,6 +37,16 @@ STATUS_IN_PROGRESS	equ 0xFF
 .text
 
 F_spxcontroller_dispatch:
+    cp CMD_SYS_DOT_DISPATCH
+    jp z, op_sys_dot_dispatch
+    cp CMD_SYS_SETTINGS_READ
+    jp z, op_settings_read
+    cp CMD_SYS_SETTINGS_WRITE
+    jp z, op_settings_write
+    cp CMD_SYS_UPGRADE
+    jp z, op_sys_upgrade
+    cp CMD_SYS_DIAGNOSTICS
+    jp z, op_sys_diagnostics
 	cp		CMD_GET_STATUS
 	jr		z, op_get_status
 	cp		CMD_WIFI_SCAN
@@ -55,6 +65,7 @@ F_spxcontroller_dispatch:
 	jp		z, op_get_message
 	cp		CMD_XFS_READ
 	jp		z, op_xfs_read
+	ld a, 1
 	scf
 	ret
 
@@ -285,3 +296,175 @@ generic_error:
 op_get_message_error:
 	pop		hl
 	jp		generic_error
+
+; Settings ABI: A=operation, HL=buffer outside page B, BC=capacity/exact
+; length. BC returns required length (16) on READ. Carry/A return error.
+; WS+0=u16 length, WS+2=error, WS+16=raw payload only.
+op_settings_read:
+    call settings_validate_buffer
+    ret c
+    ld (WORKSPACE), bc
+    push hl
+    ld a, CMD_SYS_SETTINGS_READ
+    call issue_out_poll
+    pop de
+    ld bc, (WORKSPACE)
+    jp nz, op_settings_error
+    ld hl, WORKSPACE+16
+    ldir
+    ld bc, SYS_SETTINGS_SIZE
+    xor a
+    ret
+op_settings_write:
+    call settings_validate_buffer
+    ret c
+    ld a, b
+    or a
+    jr nz, op_settings_bad_payload
+    ld a, c
+    cp SYS_SETTINGS_SIZE
+    jr nz, op_settings_bad_payload
+    ld (WORKSPACE), bc
+    ld de, WORKSPACE+16
+    ldir
+    ld a, CMD_SYS_SETTINGS_WRITE
+    call issue_out_poll
+    jp nz, op_settings_error
+    xor a
+    ret
+op_settings_bad_payload:
+    ld a, 3
+    scf
+    ret
+op_settings_error:
+    ld a, (WORKSPACE+2)
+    scf
+    ret
+; HL=9-byte diagnostics buffer: LE installed bootloader u32, active policy
+; u8, LE lockout reason u32. Never writable through settings.
+op_sys_diagnostics:
+    push hl
+    ld a, CMD_SYS_DIAGNOSTICS
+    call issue_out_poll
+    pop de
+    jp nz, generic_error
+    ld hl, WORKSPACE
+    ld bc, 10
+    ldir
+    xor a
+    ret
+
+op_sys_upgrade:
+    ld a, CMD_SYS_UPGRADE
+    call issue_out_poll
+    jp nz, op_settings_error
+    xor a
+    ret
+
+; Reject buffers aliasing the gateway-mapped page B, or wrapping address space.
+settings_validate_buffer:
+    push hl
+    ld de, SYS_SETTINGS_SIZE
+    add hl, de
+    jr c, settings_buffer_pop_error
+    dec hl
+    ld a, h
+    pop hl
+    ld d, a
+    ld a, h
+    cp 0x20
+    jr nc, settings_buffer_above
+    ld a, d
+    cp 0x20
+    jp nc, op_settings_bad_payload
+    xor a
+    ret
+settings_buffer_above:
+    cp 0x30
+    jp c, op_settings_bad_payload
+    xor a
+    ret
+settings_buffer_pop_error:
+    pop hl
+    jp op_settings_bad_payload
+
+SPX_HANDOFF equ 0x8080
+op_sys_dot_dispatch:
+    ld de, SPX_HANDOFF
+    or a
+    sbc hl, de
+    jp nz, .no_spx_command
+    ld a, (SPX_HANDOFF+4)
+    cp 1
+    jp nz, .no_spx_command
+    ld a, (SPX_HANDOFF+5)
+    ld c, a
+    ld hl, SPX_HANDOFF+8
+.skip_spx_space:
+    ld a, c
+    cp 7
+    jp c, .no_spx_command
+    ld a, (hl)
+    cp ' '
+    jr nz, .match_spx_begin
+    inc hl
+    dec c
+    jr .skip_spx_space
+.match_spx_begin:
+    ld de, STR_spx_upgrade
+    ld b, 7
+.match_spx_upgrade:
+    ld a, (de)
+    cp (hl)
+    jp nz, .no_spx_command
+    inc hl
+    inc de
+    dec c
+    djnz .match_spx_upgrade
+.trailing_spx_space:
+    ld a, c
+    or a
+    jr z, .prepare_spx_upgrade
+    ld a, (hl)
+    cp ' '
+    jp nz, .no_spx_command
+    inc hl
+    dec c
+    jr .trailing_spx_space
+.prepare_spx_upgrade:
+    call op_sys_upgrade
+    jr c, .spx_upgrade_error
+    jr .spx_upgrade_return
+.spx_upgrade_error:
+    ; The upper print vectors may not exist before delayed initialization.
+    ; Copy the message into host RAM; zeropage prints using direct ROM helpers
+    ; after the gateway has restored page B. Preserve the controller error.
+    ld hl, STR_spx_upgrade_failed
+    cp 5
+    jr nz, .copy_spx_upgrade_error
+    ld hl, STR_spx_bootloader_required
+.copy_spx_upgrade_error:
+    push af
+    ld de, 0x8200
+.copy_spx_error_char:
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc de
+    or a
+    jr nz, .copy_spx_error_char
+    pop af
+.spx_upgrade_return:
+    ; Carry means handled; A=0 returns normally for reset after page-out.
+    ; Errors return normally to the caller without deferred initialization.
+    scf
+    ret
+.no_spx_command:
+    xor a
+    ret
+STR_spx_upgrade:
+    .ascii "upgrade"
+STR_spx_bootloader_required:
+    .asciz "Bootloader update required for .spx upgrade.\nUpdate the bootloader, then try again.\n"
+STR_spx_upgrade_failed:
+    .asciz "Upgrade preparation failed. Update was not started.\n"

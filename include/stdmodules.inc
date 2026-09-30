@@ -29,6 +29,10 @@ AUTOMOUNT	equ	0xFA01		; Runs the automounter
 ; BASIC extensions module
 LOAD_RESOURCE_URL equ 0xFD00		; DE = URL; mount and load boot.zx
 
+; Launcher ROM module
+LAUNCHER_LOAD equ 0xD800		; Copy the launcher app to $F000, return HL=$F000
+XFS_XOPEN equ 0x3D01		; IX=absolute overlay path, return A=read-only FD
+
 ; Configuration module
 CFG_COPYCONFIG          equ 0xFE01
 CFG_FINDSECTION         equ 0xFE02

@@ -38,6 +38,10 @@ UPPER_ENTRYPT:		equ 0x1FF8
 UPPER_ENTRYPT_SIZE:	equ 0x08
 INIT_MAGIC_0:		equ 0x53A7
 INIT_MAGIC_1:		equ 0xD91C
+; Stable .spx handoff block: "SPXA", version 1, byte length, two reserved
+; bytes, then a zero-terminated raw tail. Future ROMs can identify this ABI.
+SPX_HANDOFF:		equ 0x8080
+SPX_BASIC_SP:		equ 0x8100
 
 ; Initialization routines that are run on reset.
 ;
@@ -83,6 +87,10 @@ J_reset:
 ; runs BASSTART vectors immediately, and returns through the caller's stack.
 .globl J_deferred_init
 J_deferred_init:
+	; Setup passes HL=$8080. Inspect the command before cold initialization
+	; or BASSTART can change Spectrum RAM containing future argument data.
+	call F_spx_command_line
+	ret c ; explicit command returns through the existing high-RAM page-out
 	; The dot command may be run repeatedly.  Do not clear fixed RAM or rerun
 	; module initialization once a previous cold or deferred startup completed.
 	ld hl, (v_init_magic)
@@ -95,27 +103,44 @@ J_deferred_init:
 	or a
 	sbc hl, de
 	jr nz, .initialize_deferred0
-	jp PAGEOUT-1
+	ret
 .initialize_deferred0:
 	call J_reset_common
 	call F_deferred_basic_colours
-	; Match the prompt NMI's two-stack layout. Keep BASIC's stack in NMISTACK
-	; for callbacks such as F_boot, then run the callback dispatcher on the
-	; private fixed-RAM stack so CALLBAS cannot overwrite its return frames.
-	ld (NMISTACK), sp
-	ld sp, NMISTACK-8
+	; The setup stage owns a private stack in ordinary RAM. F_boot still needs
+	; BASIC's saved SP, but deferred initialization never switches SP itself.
+	; Restore this pointer after reset_common clears the fixed-RAM page.
+	ld hl, (SPX_BASIC_SP)
+	ld (NMISTACK), hl
 	ld a, 3
 	call F_setpageB
 	call F_basstart_direct
-	; BASSTART modules are allowed to reshape the saved BASIC stack. Reconstruct
-	; the successful 48K BASIC continuation immediately before PAGEOUT's RET.
-	ld sp, (ZX_ERR_SP)
-	ld hl, ZX_STMT_R_1
-	push hl
-	; setup_main entered deferred initialization with interrupts disabled.
-	; Enter the zero-page EI; RET pair so the EI delay covers the page-out RET;
-	; a pending interrupt must not fetch $0038 while Spectranet is still paged.
-	jp PAGEOUT-1
+	; Return to the high-RAM setup stage on its private stack. It reconstructs
+	; BASIC's continuation and performs the final EI/page-out pairing.
+	ret
+
+; HL points to the versioned SPX handoff block ($8080). Its argument tail
+; starts at HL+8 and is bounded and zero-terminated.
+; The controller page parses the stable raw tail, including repeated calls.
+ .section spxgate
+F_spx_command_line:
+    ld a, CMD_SYS_DOT_DISPATCH
+    call F_spectranext_op
+    ret nc                       ; ordinary delayed initialization
+    or a
+    jr nz, .spx_command_error
+    scf                          ; setup returns normally and pages out
+    ret                          ; controller resets both devices afterward
+.spx_command_error:
+    push af
+    call F_clear                 ; direct ROM helpers work before init
+    ld hl, 0x8200                ; error message copied by controller ROM
+    call F_print
+    pop af
+    scf                          ; handled error returns to the caller
+    ret
+
+.text
 
 ; Initialization shared by cold reset and deferred startup.
 J_reset_common:

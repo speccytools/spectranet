@@ -24,6 +24,7 @@
 .include	"fcntl.inc"
 .include	"sysvars.inc"
 .include	"errno.inc"
+.include	"stdmodules.inc"
 .text
 ; Initialize and handle tape traps.
 
@@ -47,6 +48,28 @@ F_settrap_path:
 	ld e, O_RDONLY		; read only
 	call OPEN
 	ret c			; exit now on error
+	jr .opened
+
+; F_settrap_xopen: same TAP trap, but the XFS module opens an absolute
+; controller-overlay path without consulting or changing the four VFS mounts.
+.globl F_settrap_xopen
+F_settrap_xopen:
+	ld hl, INTERPWKSPC
+	call F_basstrcpy
+	ld hl, INTERPWKSPC
+.globl F_settrap_xopen_path
+F_settrap_xopen_path:
+	ld a, (v_trapfd)
+	and a
+	call nz, F_releasetrap
+	push ix
+	push hl
+	pop ix
+	ld hl, XFS_XOPEN
+	rst MODULECALL_NOPAGE
+	pop ix
+	ret c
+.opened:
 	ld (v_trapfd), a	; save the file descriptor
 	
 	ld de, v_trap_blklen	; read the TAP block length to "prime the
@@ -225,6 +248,8 @@ J_cleanup_traperr:
 	push af
 	ld a, (v_trapfd)
 	call VCLOSE
+	xor a
+	ld (v_trapfd), a
 	pop af
 	ret
 
