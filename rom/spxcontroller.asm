@@ -47,6 +47,8 @@ F_spxcontroller_dispatch:
     jp z, op_sys_upgrade
     cp CMD_SYS_DIAGNOSTICS
     jp z, op_sys_diagnostics
+    cp CMD_SYS_JOYSTICK_STATUS
+    jp z, op_sys_joystick_status
 	cp		CMD_GET_STATUS
 	jr		z, op_get_status
 	cp		CMD_WIFI_SCAN
@@ -350,6 +352,19 @@ op_sys_diagnostics:
     jp nz, generic_error
     ld hl, WORKSPACE
     ld bc, 10
+    ldir
+    xor a
+    ret
+
+; HL=8-byte output: state, enabled, Kempston bits, device address, VID, PID.
+op_sys_joystick_status:
+    push hl
+    ld a, CMD_SYS_JOYSTICK_STATUS
+    call issue_out_poll
+    pop de
+    jp nz, generic_error
+    ld hl, WORKSPACE
+    ld bc, 8
     ldir
     xor a
     ret
