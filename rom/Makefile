@@ -8,6 +8,7 @@ P0LDFLAGS = -T page0.ld -Map $(P0OUT).map -L ../syslib
 P0LIBS = -lpager
 
 SPXCONTROLLEROBJS = spxcontroller.o
+SPXVERFILE = spxver.xinc
 SPXCONTROLLEROUT = /build/spxcontroller/spxcontroller.bin
 SPXCONTROLLERSIZE = /build/spxcontroller/spxcontroller_size.h
 SPXCONTROLLERLDFLAGS = -T spxcontroller.ld -Map $(SPXCONTROLLEROUT).map
@@ -75,6 +76,14 @@ spxcontroller: $(SPXCONTROLLEROBJS) spxcontroller.ld
 	mkdir -p $(dir $(SPXCONTROLLEROUT))
 	$(LD) -o $(SPXCONTROLLEROUT) $(SPXCONTROLLEROBJS) $(SPXCONTROLLERLDFLAGS)
 	printf '#define SPXCONTROLLER_BIN_SIZE %s\n' "$$(stat -c %s $(SPXCONTROLLEROUT))" > $(SPXCONTROLLERSIZE)
+
+spxcontroller.o: $(SPXVERFILE)
+
+$(SPXVERFILE): VERSION
+	@v="$$(tr -d '\r\n' < VERSION)"; \
+	case "$$v" in ''|*[!a-zA-Z0-9._+-]*) echo "Invalid Spectranext version: $$v" >&2; exit 1;; esac; \
+	if [ "$${#v}" -gt 31 ]; then echo "Spectranext version exceeds 31 bytes" >&2; exit 1; fi; \
+	printf 'spx_version: defb "%s",0\n' "$$v" > $(SPXVERFILE)
 
 modman:	$(MODMANOBJS)
 	$(LD) -o $(MODMANOUT) $(MODMANOBJS) $(MODMANLDFLAGS) $(MODMANLIBS)

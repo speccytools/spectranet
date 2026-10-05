@@ -37,6 +37,8 @@ STATUS_IN_PROGRESS	equ 0xFF
 .text
 
 F_spxcontroller_dispatch:
+    cp CMD_GET_VERSION
+    jp z, op_get_version
     cp CMD_SYS_DOT_DISPATCH
     jp z, op_sys_dot_dispatch
     cp CMD_SYS_SETTINGS_READ
@@ -70,6 +72,23 @@ F_spxcontroller_dispatch:
 	ld a, 1
 	scf
 	ret
+
+; CMD_GET_VERSION (15) — copy the build's NUL-terminated version to HL.
+; This runs entirely in the shared controller ROM, on hardware and Fuse.
+; The caller provides 32 writable bytes outside page B.
+op_get_version:
+    push hl
+    pop de
+    ld hl, spx_version
+op_get_version_copy:
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc de
+    or a
+    jr nz, op_get_version_copy
+    xor a
+    ret
 
 ; CMD_GET_STATUS (0) — issue command, then read results from workspace.
 op_get_status:
@@ -483,3 +502,4 @@ STR_spx_bootloader_required:
     .asciz "Bootloader update required for .spx upgrade.\nUpdate the bootloader, then try again.\n"
 STR_spx_upgrade_failed:
     .asciz "Upgrade preparation failed. Update was not started.\n"
+.include "spxver.xinc"
