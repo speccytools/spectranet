@@ -132,6 +132,7 @@ CMD_ENGINECALL		equ 6
 CMD_GET_MESSAGE		equ 7
 CMD_XFS_READ		equ 8
 CMD_GET_VERSION		equ 15
+CMD_GET_STRING          equ 21
 
 
 ; Definitions

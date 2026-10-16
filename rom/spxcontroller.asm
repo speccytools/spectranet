@@ -37,6 +37,8 @@ STATUS_IN_PROGRESS	equ 0xFF
 .text
 
 F_spxcontroller_dispatch:
+    cp CMD_GET_STRING
+    jp z, op_get_string
     cp CMD_GET_VERSION
     jp z, op_get_version
     cp CMD_SYS_DOT_DISPATCH
@@ -52,11 +54,11 @@ F_spxcontroller_dispatch:
     cp CMD_SYS_JOYSTICK_STATUS
     jp z, op_sys_joystick_status
 	cp		CMD_GET_STATUS
-	jr		z, op_get_status
+	jp		z, op_get_status
 	cp		CMD_WIFI_SCAN
-	jr		z, op_wifi_scan
+	jp		z, op_wifi_scan
 	cp		CMD_WIFI_GET_AP
-	jr		z, op_wifi_get_ap
+	jp		z, op_wifi_get_ap
 	cp		CMD_WIFI_CONNECT
 	jp		z, op_wifi_connect
 	cp		CMD_WIFI_DISCONNECT
@@ -88,6 +90,85 @@ op_get_version_copy:
     or a
     jr nz, op_get_version_copy
     xor a
+    ret
+
+; GET_STRING (21): C=string ID, B=capacity including NUL, HL=output.
+; Reject zero capacity, page-B overlap and address wrap before writing anything.
+; VERSION (ID 1) comes from this ROM, preserving the existing version getter.
+op_get_string:
+    ld a, b
+    or a
+    jp z, generic_error
+    push hl
+    ld e, b
+    ld d, 0
+    add hl, de
+    jr c, string_bad_buffer
+    dec hl
+    ld a, h
+    pop hl
+    ld d, a
+    ld a, h
+    cp 0x30
+    jr nc, string_valid_buffer
+    cp 0x20
+    jp nc, generic_error
+    ld a, d
+    cp 0x20
+    jp nc, generic_error
+string_valid_buffer:
+    ld a, c
+    cp 1
+    jr z, string_version
+    ld (WORKSPACE), a
+    ld a, b
+    ld (WORKSPACE+1), a
+    push hl
+    push bc
+    ld a, CMD_GET_STRING
+    call issue_out_poll
+    pop bc
+    pop de
+    jr nz, string_failed
+    ld hl, WORKSPACE
+    jr string_copy
+string_bad_buffer:
+    pop hl
+    jp generic_error
+string_version:
+    push hl
+    ld hl, spx_version
+    push hl
+    push bc
+string_version_scan:
+    ld a, (hl)
+    inc hl
+    or a
+    jr z, string_version_fits
+    djnz string_version_scan
+    pop bc
+    pop hl
+    pop de
+    jr string_failed
+string_version_fits:
+    pop bc
+    pop hl
+    pop de
+string_copy:
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc de
+    or a
+    ret z
+    djnz string_copy
+    ; A malformed controller reply must not overrun the supplied capacity.
+    dec de
+string_failed:
+    xor a
+    ld (de), a
+    ld a, 1
+    scf
     ret
 
 ; CMD_GET_STATUS (0) — issue command, then read results from workspace.
