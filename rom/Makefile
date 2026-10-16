@@ -108,20 +108,21 @@ ver:	$(VERFILE)
 $(VERFILE):
 	echo "bldstr: defb \"`cat VERSION`\",0x0a,0" > $(VERFILE)
 
-p0syms: page0 $(P0SYMS)
-$(P0SYMS):
+p0syms: page0
 	$(MAP2SYM) $(P0OUT).map $(P0SYMS)
 
-p1syms: page1 $(P1SYMS)
-$(P1SYMS):
+p1syms: page1
 	$(MAP2SYM) $(P1OUT).map $(P1SYMS)
 
-p2syms: page2 $(P2SYMS)
-$(P2SYMS):
+p2syms: page2
 	$(MAP2SYM) $(P2OUT).map $(P2SYMS)
 
-p3syms:	page3 $(P3SYMS)
-$(P3SYMS):
+p3syms: page3
 	$(MAP2SYM) $(P3OUT).map $(P3SYMS)
 
 include ../make.inc
+
+# Regenerate users of cross-page constants whenever the corresponding page moves.
+jumptable.o: page0.xinc
+w5100_sockctrl.o utility.o: page2.xinc
+ui_input.o ui_output_stub.o: page1.xinc
