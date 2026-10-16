@@ -101,6 +101,9 @@ SECTIONS
 .textz2 : {
         /* Whole helper section moved here to balance the guarded buckets. */
         w5100_genintfunc.o(.text)
+        *(sockchk)
+        *(udpbody)
+        *(txzero)
         *(.spxgate)
         *(spxgate)
         } > pagez2

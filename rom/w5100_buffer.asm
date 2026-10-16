@@ -202,6 +202,9 @@ F_copytxbuf:
 	; check whether page A is being used.
 	; (note: will use page B if this is the case)
 	call F_checkpageA
+    ld a, b
+    or c
+    jp z, tx_empty_payload
 
 .waitformsb2:
 	ld l, Sn_IR % 256	; point hl at the IR, test for CONNRESET
@@ -372,3 +375,10 @@ F_checkpageA:
 	ld a, (v_buf_pga)	; get page A value
 	call F_setpageB		; page it in
 	ret	
+
+; SEND of a zero-length UDP datagram updates the pointers/command without LDIR.
+.section txzero
+tx_empty_payload:
+    ld (v_sockptr), hl
+    ld (v_copylen), bc
+    jp .completetx2

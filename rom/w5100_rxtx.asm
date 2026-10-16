@@ -163,7 +163,7 @@ F_recvfrom:
 	ld (hl), S_IR_RECV	; since the W5100 sees it still has data
 	pop de			; retrieve the data buffer address
 	pop bc			; retrieve the length argument
-	call F_copyrxbuf	; get the data
+	call F_datagram_body	; receive exactly one payload and discard any truncated tail
 	push hl			; save the W5100 register pointer
 	ld ix, (v_bufptr)	; now convert the big endian port to
 	ld h, (ix+4)		; little endian. Byte 4 is the high order
@@ -306,6 +306,7 @@ F_pollfd:
 
 ; Check a socket's interrupt and status register. Register bank must
 ; be set in H prior to entry.
+.section sockchk
 .globl F_checksock
 F_checksock:
 	ld l, Sn_IR % 256	; check interrupt register
@@ -325,3 +326,55 @@ F_checksock:
 	or a			; ensure Z flag is reset
 	ret
 	
+
+; UDP headers carry the payload length at bytes 6/7. Never consume the next
+; datagram to fill a larger caller buffer; a short caller buffer discards tail.
+.section udpbody
+F_datagram_body:
+    push hl
+    ld ix, (v_bufptr)
+    ld h, (ix+6)
+    ld l, (ix+7)
+    or a
+    sbc hl, bc
+    jr nc, udp_body_size
+    add hl, bc
+    ld b, h
+    ld c, l
+    ld hl, 0
+udp_body_size:
+    ex (sp), hl
+    ld a, b
+    or c
+    jr z, udp_body_empty
+    call F_copyrxbuf
+udp_body_empty:
+    ex (sp), hl
+    push bc
+    jp udp_discard_tail
+.text
+udp_discard_tail:
+    ld a, h
+    or l
+    jr z, udp_body_done
+    push hl
+    ld b, h
+    ld c, l
+    ld a, b
+    or a
+    jr z, udp_discard_chunk
+    ld bc, 256
+udp_discard_chunk:
+    ld ix, 0
+    add ix, sp
+    ld h, (ix+5)
+    ld de, buf_workspace
+    call F_copyrxbuf
+    pop hl
+    or a
+    sbc hl, bc
+    jr udp_discard_tail
+udp_body_done:
+    pop bc
+    pop hl
+    ret
