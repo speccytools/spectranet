@@ -1,4 +1,4 @@
-SUBDIRS = snapman messages config basext streams allram esxdos
+SUBDIRS = matchmaking snapman messages config basext streams allram esxdos
 
 .PHONY: subdirs $(SUBDIRS)
 

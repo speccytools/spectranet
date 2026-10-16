@@ -18,7 +18,7 @@ P1OUT = page1.bin
 P1LDFLAGS = -T page1.ld -Map $(P1OUT).map -L ../syslib
 P1LIBS = -lromui
 
-P2OBJS = utilromvectors.o utility_impl.o utilnmi.o save7ffd.o $(call localized_obj,utilnmi)
+P2OBJS = match_connect.o utilromvectors.o utility_impl.o utilnmi.o save7ffd.o $(call localized_obj,utilnmi)
 P2OUT = page2.bin
 P2LDFLAGS = -T ../modules/modules.ld -Map $(P2OUT).map -L ../syslib
 P2LIBS = -lromui

@@ -22,6 +22,7 @@
 .include	"w5100_defs.inc"
 .include	"sysvars.inc"
 .include	"sockdefs.inc"
+.include "page2.xinc"
 
 ; Socket control routines. In this file:
 ; F_bind
@@ -90,58 +91,17 @@ F_listen:
 	jp J_leavesockfn
 
 ;-------------------------------------------------------------------------
-; F_connect:
-; Connect to a remote host.
-;
-; Parameters: A = socket fd
-;            DE = pointer to 4 byte buffer containing destination IP
-;            BC = port number
-; On error, the carry flag is set and A contains the error number.
-; On success, returns zero in A
+; F_connect: page-zero gateway
 .globl F_connect
 F_connect:
-	call F_gethwsock	; H = socket register bank MSB
-	ld l, Sn_DPORT0 % 256	; destination port register
-	ld (hl), b		; high order of port
-	inc l
-	ld (hl), c		; low order of port
-	ld l, Sn_DIPR0 % 256	; destination IP address register
-	ex de, hl		; passed buffer value now in hl
-	ldi
-	ldi
-	ldi
-	ldi
-	ld hl, v_localport
-	ld e, Sn_PORT1 % 256	; set local port LSB
-	ldi
-	ld e, Sn_PORT0 % 256	; set local port MSB
-	ldi
-	ld hl, (v_localport)	; update the local port number
-	inc hl
-	ld (v_localport), hl
-	
-	ex de, hl
-	ld l, Sn_CR % 256	; command register
-	ld (hl), S_CR_CONNECT	; instruction to connect to remote host
-
-	ld l, Sn_IR % 256	; interrupt register
-.waitforconn3:
-	ld a, (hl)
-	bit BIT_IR_CON, a
-	jr nz, .connected3
-	and a			; if not, is it zero (no flags set?)
-	jr z, .waitforconn3
-	and S_IR_DISCON		; connection refused?
-	jr nz, .refused3
-	ld a, ETIMEDOUT		; connection timed out
-	scf
-	jp J_leavesockfn
-.refused3:
-	ld a, ECONNREFUSED
-	scf
-	jp J_leavesockfn
-.connected3:
-	set BIT_IR_CON, (hl)	; reset interrupt bit
-	xor a			; connection OK
-	jp J_leavesockfn
-
+    call F_gethwsock
+    jp c, J_leavesockfn
+    ex af, af'
+    ld a, 2
+    call F_pushpageB
+    ex af, af'
+    call F_connect_impl
+    ex af, af'
+    call F_poppageB
+    ex af, af'
+    jp J_leavesockfn
