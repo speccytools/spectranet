@@ -94,6 +94,17 @@ entry:
     ld a, i
     push af
     di
+    ; CONNECT dispatches directly from page zero. Own all display preparation
+    ; here, including detection/restoration of the Spectrum's screen RAM bank.
+    call F_detectpages
+    ld a, (v_machinetype)
+    cp 1
+    jr nz, entry_screen_ready
+    ld a, (v_port7ffd)
+    res 3, a
+    ld bc, 0x7FFD
+    out (c), a
+entry_screen_ready:
     ld hl, SNAP
     ld de, SNAP+1
     ld bc, SNAPSIZE-1
@@ -1163,6 +1174,9 @@ restore_music:
     jr nz, restore_music
     ld a, (BORDER)
     out (254), a
+    ld a, (v_port7ffd)
+    ld bc, 0x7FFD
+    out (c), a
     pop bc
     pop af
     call SETPAGEA

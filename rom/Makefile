@@ -18,7 +18,7 @@ P1OUT = page1.bin
 P1LDFLAGS = -T page1.ld -Map $(P1OUT).map -L ../syslib
 P1LIBS = -lromui
 
-P2OBJS = match_connect.o utilromvectors.o utility_impl.o utilnmi.o save7ffd.o $(call localized_obj,utilnmi)
+P2OBJS = resources_impl.o utilromvectors.o utility_impl.o utilnmi.o save7ffd.o $(call localized_obj,utilnmi)
 P2OUT = page2.bin
 P2LDFLAGS = -T ../modules/modules.ld -Map $(P2OUT).map -L ../syslib
 P2LIBS = -lromui
@@ -124,5 +124,5 @@ include ../make.inc
 
 # Regenerate users of cross-page constants whenever the corresponding page moves.
 jumptable.o: page0.xinc
-w5100_sockctrl.o utility.o: page2.xinc
+utility.o vfs.o: page2.xinc
 ui_input.o ui_output_stub.o: page1.xinc

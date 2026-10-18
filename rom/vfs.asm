@@ -62,6 +62,7 @@
 .include	"sysdefs.inc"
 .include	"sockdefs.inc"
 .include    "errno.inc"
+.include "page2.xinc"
 
 ;----------------------------------------------------------------------------
 ; Dispatcher routines.
@@ -314,101 +315,25 @@ F_setmountpoint:
 ;             Flags in C
 ; C bit 0 = Set=Allocate, reset=free
 ; C bit 1 = Set=Directory, reset=File
+; Page-zero gateway to the fixed-RAM-only allocator in utility page 2.
+; Save the caller's AF' below the page frame, and hold input/result AF in
+; AF' while the pager uses A. F_push/poppageB preserve HL, DE and BC.
+; Neither the saved bank nor AF survives in global scratch across the call.
+; Stack before implementation: saved page B, saved caller AF', return PC.
+; The implementation's AF/HL result survives restoring the caller's page B.
 .globl F_resalloc
 F_resalloc:
-	bit 1, c
-	jr nz, F_allocdirhnd
-;--------------------------------------------------------------------------
-; F_allocfd
-; Allocates a file descriptor. 
-; Parameters:	A = ROM number for the fd
-; On return HL = address of fd. Functions that use this should set this
-; to a value that means something (and bit 7 must be reset). L = actual
-; fd number.
-.globl F_allocfd
-F_allocfd:
-	bit 0, c
-	jr z, F_freefd
-	push bc
-	ld hl, v_fd1hwsock	; lowest address in fd table
-	ld b, MAX_FDS
-.findloop13:
-	bit 7, (hl)		; not allocated yet?
-	jr nz, .alloc13
-	inc l
-	djnz .findloop13		; keep looking until none left
-	scf			; out of free file descriptors
-	pop bc
-	ret
-.alloc13:
-	res 7, (hl)		; basic allocation
-	push hl			; save FD address and FD number
-	ld b, a			; save parameter
-	ld a, l
-	add a, VECOFFS		; find the address of the vector table
-	ld l, a			; and make HL point to it
-	ld a, b			; retrieve param
-	ld (hl), a		; set vector table page address
-	pop hl
-	pop bc
-	ret			; FD is returned in L, address in HL
-
-;-------------------------------------------------------------------------
-; F_freefd
-; Frees the file descriptor passed in A.
-.globl F_freefd
-F_freefd:
-	push hl
-	push af
-	ld h, v_fd1hwsock / 256
-	ld l, a
-	ld (hl), 0x80		; Set bit 7 to mark the fd as freed.
-	add a, VECOFFS		; add the vector table offset
-	ld l, a			; and point HL to it
-	ld (hl), 0x00		; clear it down
-	pop af
-	pop hl
-	ret
-
-;------------------------------------------------------------------------
-; F_allocdirhnd
-; Allocates a directory handle.
-; Parameters	A = ROM number for the handle
-; On return HL = address of the handle, L is the handle itself
-.globl F_allocdirhnd
-F_allocdirhnd:
-	bit 0, c
-	jr z, F_freedirhnd
-	push bc
-	ld hl, v_dhnd1page
-	ld b, MAX_DIRHNDS
-	ex af, af'
-.findloop15:
-	ld a, (hl)
-	and a			; 0 = free
-	jr z, .alloc15
-	inc l
-	djnz .findloop15
-	scf			; all are used up
-	pop bc
-	ret
-.alloc15:
-	ex af, af'
-	ld (hl), a		; allocate it by setting the page number
-	pop bc
-	ret
-
-;-----------------------------------------------------------------------
-; F_freedirhnd
-; Frees the directory handle passed in A
-.globl F_freedirhnd
-F_freedirhnd:
-	push hl
-	ld h, v_dhnd1page / 256
-	ld l, a
-	ld (hl), 0
-	pop hl
-	ret
+    ex af, af'
+    push af
+    ld a, UTILROM
+    call F_pushpageB
+    ex af, af'
+    call F_resalloc_u_impl
+    ex af, af'
+    call F_poppageB
+    pop af
+    ex af, af'
+    ret
 
 ;-----------------------------------------------------------------------
 ; F_resolvemp
